@@ -8,8 +8,22 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="landing.css">
+  <script>
+    // Decide before first paint whether the intro plays, so the doors never flash first.
+    // Once per session, never with reduced motion, and never without JS.
+    try {
+      if (!matchMedia('(prefers-reduced-motion: reduce)').matches && !sessionStorage.getItem('intro-seen')) {
+        document.documentElement.classList.add('intro-open');
+      }
+    } catch (e) {}
+  </script>
 </head>
 <body>
+  <div class="intro" id="intro">
+    <video class="intro__video" muted playsinline preload="none" aria-hidden="true"></video>
+    <button class="intro__skip" type="button">Skip intro <span aria-hidden="true">↓</span></button>
+  </div>
+
   <main>
     <div class="container">
       <h1 class="site-title">dogen.builder.xyz</h1>
@@ -30,6 +44,8 @@
           <span class="panel__arrow" aria-hidden="true">→</span>
         </a>
       </div>
+
+      <button class="replay" type="button" hidden>▶ Replay intro</button>
     </div>
   </main>
 
@@ -49,6 +65,77 @@
         });
       }
     }
+
+    // Full-screen intro: the hypermodern cut, which ends on the same near-black as this
+    // page and dissolves into it. Any failure (autoplay blocked, load error, a stall)
+    // reveals the doors straight away, so the intro can never hold them hostage.
+    (() => {
+      const root = document.documentElement;
+      const intro = document.getElementById('intro');
+      const video = intro.querySelector('video');
+      const main = document.querySelector('main');
+      const replay = document.querySelector('.replay');
+      const INK_AT = 10.3; // the video's ink ripple starts here; the letterbox follows it
+      let open = false;
+      let stall;
+      let returnTo = null;
+
+      function play(from) {
+        open = true;
+        returnTo = from || null;
+        root.classList.add('intro-open');
+        intro.classList.remove('is-leaving', 'is-ink');
+        main.inert = true;
+        try { sessionStorage.setItem('intro-seen', '1'); } catch (e) {}
+        if (!video.getAttribute('src')) {
+          video.poster = 'media/hypermodern-intro.jpg';
+          video.src = 'media/hypermodern-intro.mp4';
+        }
+        video.currentTime = 0;
+        stall = setTimeout(finish, 3000);
+        video.play().catch(finish);
+      }
+
+      function finish() {
+        if (!open) return;
+        open = false;
+        clearTimeout(stall);
+        video.pause();
+        // inert dropped focus when the intro opened; put the keyboard back somewhere sensible
+        const hadFocus = intro.contains(document.activeElement);
+        intro.classList.add('is-leaving');
+        root.classList.remove('intro-open'); // releases the doors' entrance animation
+        main.inert = false;
+        if (returnTo) returnTo.focus();
+        else if (hadFocus) main.querySelector('.panel').focus();
+        setTimeout(() => intro.classList.remove('is-leaving', 'is-ink'), 650);
+      }
+
+      // Browsers won't play muted video in a background tab, so an intro opened in one
+      // waits until it's actually seen, and one interrupted by a tab switch picks back up.
+      function start() {
+        if (document.hidden) document.addEventListener('visibilitychange', start, { once: true });
+        else play();
+      }
+      document.addEventListener('visibilitychange', () => {
+        if (open && !document.hidden && video.paused) video.play().catch(finish);
+      });
+
+      video.addEventListener('playing', () => clearTimeout(stall));
+      video.addEventListener('timeupdate', () => {
+        if (video.currentTime >= INK_AT) intro.classList.add('is-ink');
+      });
+      video.addEventListener('ended', finish);
+      video.addEventListener('error', finish);
+      intro.querySelector('.intro__skip').addEventListener('click', finish);
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') finish();
+      });
+      replay.addEventListener('click', () => play(replay));
+      replay.hidden = false;
+
+      if (root.classList.contains('intro-open')) start();
+    })();
   </script>
 </body>
 </html>

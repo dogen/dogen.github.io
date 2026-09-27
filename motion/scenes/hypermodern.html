@@ -120,14 +120,19 @@
       ]
       const CLICK = 10.25
 
+      // ?cut=intro renders the landing-page intro: the same film, but it stops once the ink
+      // ripple has filled the frame instead of wiping back to paper, so the page can dissolve
+      // straight from it into the dark landing.
+      const INTRO_CUT = new URLSearchParams(location.search).get("cut") === "intro"
+
       const [blob, bg] = layer(480, 270)
       let spherePts, torusPts
 
       M.scene({
-        duration: 12,
+        duration: INTRO_CUT ? 11.2 : 12,
         fps: 60,
         crf: 22,
-        poster: 8.9,
+        poster: INTRO_CUT ? 0 : 8.9,
         fonts: [
           `800 100px ${DISPLAY}`,
           `300 100px ${DISPLAY}`,
@@ -453,7 +458,7 @@
         g.beginPath()
         g.arc(x, y, inkR, 0, TAU)
         g.fill()
-        if (!paperR) return
+        if (!paperR || INTRO_CUT) return
         g.fillStyle = C.paper
         g.beginPath()
         g.arc(x, y, paperR, 0, TAU)
@@ -462,7 +467,10 @@
 
       /** Grid, registration marks and micro-labels. Drawn in difference so they read on any colour. */
       function chrome(g, t, frame) {
+        const fade = INTRO_CUT ? 1 - span(t, CLICK + 0.3, CLICK + 0.7) : 1
+        if (!fade) return
         g.save()
+        g.globalAlpha = fade
         g.globalCompositeOperation = "difference"
         g.fillStyle = "rgba(255, 255, 255, 0.07)"
         for (let i = 0; i <= 12; i++) g.fillRect(MARGIN + (i * (W - 2 * MARGIN)) / 12, 0, 1, H)

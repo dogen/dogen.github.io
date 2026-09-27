@@ -1,7 +1,7 @@
 // Renders the motion scenes to video for the landing page.
 //
-//   npm run render               every scene
-//   npm run render -- analog     just one
+//   npm run render                       every video
+//   npm run render -- hypermodern-intro  just one
 //
 // Each scene in scenes/ is stepped frame by frame in headless Edge (or the
 // Chromium at $BROWSER_PATH). Frames are piped as PNGs straight into ffmpeg,
@@ -15,8 +15,22 @@ import { chromium } from "playwright-core"
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const outDir = path.resolve(here, "../static-pages/media")
+
+// Every video we make. A cut renders an existing scene with extra query parameters.
+const RENDERS = [
+  { name: "cyberpunk" },
+  { name: "analog" },
+  { name: "hypermodern" },
+  { name: "hypermodern-intro", scene: "hypermodern", query: "cut=intro" }, // landing page intro
+]
 const args = process.argv.slice(2)
-const scenes = args.length ? args : ["cyberpunk", "analog", "hypermodern"]
+const unknown = args.filter((a) => !RENDERS.some((r) => r.name === a))
+if (unknown.length) {
+  throw new Error(
+    `unknown video ${unknown.join(", ")}; pick from ${RENDERS.map((r) => r.name).join(", ")}`,
+  )
+}
+const todo = args.length ? RENDERS.filter((r) => args.includes(r.name)) : RENDERS
 
 await mkdir(outDir, { recursive: true })
 const browser = await chromium.launch(
@@ -24,14 +38,15 @@ const browser = await chromium.launch(
 )
 
 try {
-  for (const name of scenes) await render(name)
+  for (const r of todo) await render(r)
 } finally {
   await browser.close()
 }
 
-async function render(name) {
+async function render({ name, scene = name, query }) {
   const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } })
-  await page.goto(`${pathToFileURL(path.join(here, "scenes", `${name}.html`))}?render`)
+  const file = pathToFileURL(path.join(here, "scenes", `${scene}.html`))
+  await page.goto(`${file}?render${query ? `&${query}` : ""}`)
   const { duration, fps, crf, poster } = await page.evaluate(async () => {
     await window.ready
     return window.SCENE

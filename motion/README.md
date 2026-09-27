@@ -9,9 +9,12 @@ from the site's own copy:
 | `analog`      | 16mm leader, colour bars, 70s channel slates, film grain       | 12s  | 24  |
 | `hypermodern` | Swiss grid, kinetic type, glass, 3D point clouds, cursor hover | 12s  | 60  |
 
-Rendered files live in `static-pages/media/` (`<scene>.mp4` plus a `<scene>.jpg` poster). They are
-**not deployed yet**: `build.sh` doesn't copy `media/`, so the live site is unchanged until the
-landing page references them.
+Rendered files live in `static-pages/media/` (`<name>.mp4` plus a `<name>.jpg` poster).
+
+**Live on the site:** `hypermodern-intro`, a cut of `hypermodern` (`?cut=intro`) that stops once
+the ink ripple fills the frame instead of wiping back to paper. The landing page plays it full
+screen once per session and dissolves from its last, near-black frame into the doors. `build.sh`
+copies only that cut; the three loops stay in the repo.
 
 ## Preview
 
@@ -25,8 +28,8 @@ Needs Node 22+, ffmpeg on the PATH, and Microsoft Edge (or set `BROWSER_PATH` to
 ```bash
 cd motion
 npm install
-npm run render               # all three
-npm run render -- analog     # just one
+npm run render                       # everything
+npm run render -- hypermodern-intro  # just one
 ```
 
 Every scene is a pure function of time (`draw(ctx, t)`) with no `Math.random()`, so a re-render

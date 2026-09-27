@@ -18,6 +18,9 @@ mkdir -p public/pro
 cp static-pages/pro/index.html public/pro/
 cp static-pages/pro/style.css public/pro/
 cp static-pages/pro/portrait.jpg public/pro/
+# The landing intro only; the other rendered videos in media/ stay out of the site
+mkdir -p public/media
+cp static-pages/media/hypermodern-intro.mp4 static-pages/media/hypermodern-intro.jpg public/media/
 
 # Note: Quartz's content/index.md outputs to public/index.html
 # but gets overwritten by our landing page.
@@ -26,7 +29,7 @@ cp static-pages/pro/portrait.jpg public/pro/
 echo "✓ Build complete. Output in public/"
 echo ""
 echo "Site structure:"
-echo "  /         → Landing (choose pro | personal)"
+echo "  /         → Landing (intro film, then choose pro | personal)"
 echo "  /pro/     → Professional (Austin Fay)"
 echo "  /garden/  → Personal entry point (The Workshop)"
 echo "  /reading/ → Reading log"
