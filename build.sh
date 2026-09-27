@@ -18,9 +18,10 @@ mkdir -p public/pro
 cp static-pages/pro/index.html public/pro/
 cp static-pages/pro/style.css public/pro/
 cp static-pages/pro/portrait.jpg public/pro/
-# The landing intro only; the other rendered videos in media/ stay out of the site
+# The landing intro only (1080p, 2160p for big screens, poster); the other videos stay out
 mkdir -p public/media
-cp static-pages/media/hypermodern-intro.mp4 static-pages/media/hypermodern-intro.jpg public/media/
+cp static-pages/media/hypermodern-intro.mp4 static-pages/media/hypermodern-intro-2160.mp4 public/media/
+cp static-pages/media/hypermodern-intro.jpg public/media/
 
 # Note: Quartz's content/index.md outputs to public/index.html
 # but gets overwritten by our landing page.

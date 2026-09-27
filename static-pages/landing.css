@@ -1,27 +1,35 @@
-@import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600&family=Newsreader:ital,wght@0,400;0,500;1,400&family=Space+Mono:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600&family=Space+Mono:wght@400;700&family=Unbounded:wght@500;600&display=swap');
 
 /* ===========================================================
    builder.xyz — landing / the fork
-   Same warm-neon-on-near-black world as /pro/.
-   Two doors, each with its own neon. Pointer lights the room.
+   The hypermodern splash's language on the near-black of /pro/:
+   Swiss grid and micro-labels, Unbounded type, two colour-blocked
+   doors with point clouds. The intro's ink ripple dissolves into it.
    =========================================================== */
 
 :root {
   --bg:     #100f0d;
   --ink:    #ece9e2;
-  --ink-2:  rgba(236, 233, 226, 0.66);
+  --ink-2:  rgba(236, 233, 226, 0.7);
   --ink-3:  rgba(236, 233, 226, 0.42);
-  --hair:   rgba(236, 233, 226, 0.10);
+  --hair:   rgba(236, 233, 226, 0.09);
+  --grid:   rgba(236, 233, 226, 0.045);
+  --card:   #181715;
+  --black:  #0b0b0c;
+  --paper:  #f1f0eb;
 
   --neon-c: #1fd6ff;   /* professional */
   --neon-y: #d7ff1e;   /* personal */
   --neon-g: #2bff66;   /* ambient */
 
-  --serif: "Newsreader", Georgia, serif;
-  --sans:  "Hanken Grotesk", system-ui, -apple-system, sans-serif;
-  --mono:  "Space Mono", ui-monospace, monospace;
+  --display: "Unbounded", "Hanken Grotesk", system-ui, sans-serif;
+  --sans:    "Hanken Grotesk", system-ui, -apple-system, sans-serif;
+  --mono:    "Space Mono", ui-monospace, monospace;
 
-  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  /* the splash's 128px margin on a 1920 stage; past that the content column stays 1664px wide */
+  --margin: max(clamp(16px, 6.6vw, 128px), calc((100vw - 1664px) / 2));
+  --pad:    clamp(22px, 2.4vw, 44px);
+  --ease:   cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -45,9 +53,9 @@ body::before {
   z-index: 0;
   pointer-events: none;
   background:
-    radial-gradient(38vmax 38vmax at 22% 28%, color-mix(in srgb, var(--neon-c) 16%, transparent), transparent 62%),
-    radial-gradient(34vmax 34vmax at 78% 34%, color-mix(in srgb, var(--neon-y) 12%, transparent), transparent 60%),
-    radial-gradient(30vmax 30vmax at 52% 88%, color-mix(in srgb, var(--neon-g) 10%, transparent), transparent 60%);
+    radial-gradient(38vmax 38vmax at 22% 28%, color-mix(in srgb, var(--neon-c) 14%, transparent), transparent 62%),
+    radial-gradient(34vmax 34vmax at 78% 34%, color-mix(in srgb, var(--neon-y) 10%, transparent), transparent 60%),
+    radial-gradient(30vmax 30vmax at 52% 88%, color-mix(in srgb, var(--neon-g) 8%, transparent), transparent 60%);
   filter: blur(28px) saturate(120%);
   opacity: 0.85;
 }
@@ -68,157 +76,61 @@ main {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 40px 24px 56px;
+  padding: clamp(92px, 12vh, 132px) var(--margin) clamp(92px, 12vh, 124px);
 }
 
-.container { width: 100%; max-width: 940px; }
-
-/* ---------- wordmark ---------- */
-.site-title {
-  font-family: var(--mono);
-  font-weight: 700;
-  font-size: clamp(1.75rem, 6.2vw, 3.6rem);
-  letter-spacing: -0.035em;
-  line-height: 1.02;
-  color: var(--neon-c);
-  text-wrap: balance;
-  overflow-wrap: break-word;
-}
-
-.tagline {
-  font-family: var(--mono);
-  font-size: 11.5px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--ink-3);
-  margin: 18px 0 44px;
-}
-
-/* ---------- the two doors ---------- */
-.split {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
-}
-
-.panel {
-  --glow: var(--neon-c);
-  position: relative;
-  isolation: isolate;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 34px 32px 60px;
-  min-height: 236px;
-  text-decoration: none;
-  color: var(--ink);
-  background: rgba(16, 15, 13, 0.58);
-  border: 1px solid var(--hair);
-  border-radius: 4px;
-  backdrop-filter: blur(9px);
-  overflow: hidden;
-  transition:
-    border-color 260ms var(--ease),
-    transform 320ms var(--ease),
-    box-shadow 320ms var(--ease);
-}
-
-.panel--pro      { --glow: var(--neon-c); }
-.panel--personal { --glow: var(--neon-y); }
-
-/* pointer-tracked light; falls back to a fixed warm corner without JS */
-.panel::before {
+/* the splash's 12-column hairline grid */
+main::before {
   content: "";
   position: absolute;
-  inset: 0;
+  top: 0;
+  bottom: 0;
+  left: var(--margin);
+  right: var(--margin);
   z-index: -1;
-  background: radial-gradient(
-    16rem 16rem at var(--mx, 78%) var(--my, 14%),
-    color-mix(in srgb, var(--glow) 26%, transparent),
-    transparent 68%
-  );
-  opacity: 0;
-  transition: opacity 300ms var(--ease);
+  pointer-events: none;
+  background: repeating-linear-gradient(to right, var(--grid) 0 1px, transparent 1px calc(100% / 12));
+  border-right: 1px solid var(--grid);
 }
 
-/* a hairline of the panel's own neon, top edge only */
-.panel::after {
-  content: "";
+.container { width: 100%; }
+
+/* ---------- frame: micro-labels and registration marks ---------- */
+.chrome,
+.replay {
   position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--glow), transparent);
-  opacity: 0.42;
-  transition: opacity 300ms var(--ease);
-}
-
-.panel:hover,
-.panel:focus-visible {
-  border-color: color-mix(in srgb, var(--glow) 55%, transparent);
-  transform: translateY(-3px);
-  box-shadow: 0 18px 44px -12px rgba(0, 0, 0, 0.7);
-  outline: none;
-}
-.panel:hover::before,
-.panel:focus-visible::before { opacity: 1; }
-.panel:hover::after,
-.panel:focus-visible::after  { opacity: 1; }
-
-.panel:focus-visible {
-  border-color: var(--glow);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--glow) 45%, transparent),
-              0 18px 44px -12px rgba(0, 0, 0, 0.7);
-}
-
-.panel__label {
   font-family: var(--mono);
   font-size: 10.5px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--glow);
-}
-
-.panel__title {
-  font-family: var(--serif);
-  font-weight: 500;
-  font-size: clamp(1.5rem, 3.4vw, 2rem);
-  line-height: 1.16;
-  letter-spacing: -0.01em;
-  margin-top: 2px;
-}
-
-.panel__desc {
-  font-size: 0.9rem;
-  line-height: 1.5;
-  color: var(--ink-2);
-  text-wrap: pretty;
-  max-width: 34ch;
-}
-
-.panel__arrow {
-  position: absolute;
-  left: 32px;
-  bottom: 28px;
-  font-family: var(--mono);
-  font-size: 1.05rem;
-  color: var(--glow);
-  opacity: 0.45;
-  transition: opacity 260ms var(--ease), transform 260ms var(--ease);
-}
-.panel:hover .panel__arrow,
-.panel:focus-visible .panel__arrow {
-  opacity: 1;
-  transform: translateX(7px);
-}
-
-.replay {
-  margin-top: 26px;
-  padding: 6px 0;
-  font-family: var(--mono);
-  font-size: 11px;
-  letter-spacing: 0.16em;
+  line-height: 1;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--ink-3);
+  white-space: nowrap;
+}
+.chrome--tl { top: 44px; left: var(--margin); }
+.chrome--tc { top: 44px; left: 50%; transform: translateX(-50%); }
+.chrome--tr { top: 44px; right: var(--margin); }
+.chrome--bl { bottom: 44px; left: var(--margin); }
+
+.mark {
+  position: absolute;
+  width: 17px;
+  height: 17px;
+  translate: -50% -50%;
+  pointer-events: none;
+  background:
+    linear-gradient(var(--ink-3), var(--ink-3)) center / 100% 1px no-repeat,
+    linear-gradient(var(--ink-3), var(--ink-3)) center / 1px 100% no-repeat;
+}
+.mark--tl { top: 82px; left: var(--margin); }
+.mark--tr { top: 82px; left: calc(100% - var(--margin)); }
+.mark--bl { top: calc(100% - 82px); left: var(--margin); }
+.mark--br { top: calc(100% - 82px); left: calc(100% - var(--margin)); }
+
+.replay {
+  bottom: 38px;
+  right: var(--margin);
+  padding: 6px 0;
   background: none;
   border: 0;
   cursor: pointer;
@@ -228,6 +140,167 @@ main {
 .replay:focus-visible { color: var(--neon-c); outline: none; }
 .replay:focus-visible { text-decoration: underline; text-underline-offset: 4px; }
 
+/* ---------- lockup ---------- */
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 14px 32px;
+  margin-bottom: clamp(24px, 4.4vh, 48px);
+}
+
+.site-title {
+  font-family: var(--display);
+  font-weight: 500;
+  font-size: clamp(1.6rem, 4vw, 3.3rem);
+  letter-spacing: -0.035em;
+  line-height: 1;
+  overflow-wrap: anywhere;
+}
+.site-title .dot { color: var(--neon-c); }
+
+.tagline {
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  padding-bottom: 0.35em;
+  white-space: nowrap;
+}
+
+/* ---------- the two doors ---------- */
+.split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(14px, 1.7vw, 32px);
+}
+
+.panel {
+  --glow: color-mix(in srgb, var(--neon-c) 24%, transparent);
+  --fg: var(--ink);
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  min-height: clamp(300px, 50vh, 560px);
+  padding: var(--pad);
+  color: var(--fg);
+  text-decoration: none;
+  background: var(--card);
+  border: 1px solid var(--hair);
+  border-radius: clamp(22px, 2vw, 36px);
+  overflow: hidden;
+  transition:
+    transform 360ms var(--ease),
+    box-shadow 360ms var(--ease),
+    border-color 260ms var(--ease);
+}
+
+.panel--personal {
+  --glow: rgba(255, 255, 255, 0.55);
+  --fg: var(--black);
+  background: var(--neon-y);
+  border-color: transparent;
+}
+
+/* pointer-tracked light, as in the splash; falls back to a fixed corner without JS */
+.panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(22rem 22rem at var(--mx, 70%) var(--my, 24%), var(--glow), transparent 70%);
+  opacity: 0;
+  transition: opacity 300ms var(--ease);
+}
+
+.panel__label {
+  position: absolute;
+  top: var(--pad);
+  left: var(--pad);
+  padding: 8px 14px 7px;
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: 10.5px;
+  line-height: 1;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  border: 1px solid color-mix(in srgb, var(--fg) 45%, transparent);
+  border-radius: 999px;
+}
+
+.panel__shape {
+  position: absolute;
+  top: clamp(8px, 1.1vw, 22px);
+  right: clamp(8px, 1.1vw, 22px);
+  width: clamp(128px, 15vw, 250px);
+  aspect-ratio: 1;
+  pointer-events: none;
+  color: var(--neon-c);
+}
+.panel--personal .panel__shape { color: var(--black); }
+
+.panel__title {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: clamp(1.55rem, 3vw, 3rem);
+  line-height: 1.05;
+  letter-spacing: -0.025em;
+}
+
+.panel__desc {
+  margin-top: clamp(10px, 1.1vw, 16px);
+  padding-right: clamp(60px, 5vw, 80px); /* clear of the arrow button */
+  font-size: clamp(0.95rem, 1.1vw, 1.15rem);
+  line-height: 1.45;
+  color: color-mix(in srgb, var(--fg) 74%, transparent);
+  text-wrap: pretty;
+}
+
+.panel__arrow {
+  position: absolute;
+  right: var(--pad);
+  bottom: var(--pad);
+  width: clamp(44px, 3.3vw, 56px);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border: 1.5px solid color-mix(in srgb, var(--fg) 40%, transparent);
+  border-radius: 50%;
+  transition: background-color 260ms var(--ease), color 260ms var(--ease), border-color 260ms var(--ease);
+}
+.panel__arrow svg {
+  width: 44%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform 260ms var(--ease);
+}
+
+.panel:hover,
+.panel:focus-visible {
+  transform: translateY(-6px);
+  box-shadow: 0 34px 60px -26px rgba(0, 0, 0, 0.8);
+  outline: none;
+}
+.panel--pro:hover,
+.panel--pro:focus-visible { border-color: color-mix(in srgb, var(--neon-c) 40%, transparent); }
+.panel:hover::before,
+.panel:focus-visible::before { opacity: 1; }
+.panel:hover .panel__arrow svg,
+.panel:focus-visible .panel__arrow svg { transform: translateX(3px); }
+.panel--pro:hover .panel__arrow,
+.panel--pro:focus-visible .panel__arrow { background: var(--neon-c); border-color: var(--neon-c); color: var(--black); }
+.panel--personal:hover .panel__arrow,
+.panel--personal:focus-visible .panel__arrow { background: var(--black); border-color: var(--black); color: var(--neon-y); }
+.panel:focus-visible { outline: 2px solid var(--neon-c); outline-offset: 4px; }
+
 /* ---------- intro: the hypermodern cut, full screen, once per session ---------- */
 .intro {
   display: none;
@@ -235,12 +308,12 @@ main {
   inset: 0;
   z-index: 10;
   place-items: center;
-  background: #f1f0eb; /* the film's paper, so letterboxing on tall screens disappears */
+  background: var(--paper); /* the film's paper, so letterboxing on tall screens disappears */
   transition: opacity 600ms var(--ease), background-color 450ms linear;
 }
 html.intro-open .intro,
 .intro.is-leaving { display: grid; }
-.intro.is-ink     { background: #0b0b0c; } /* follows the ink ripple the film ends on */
+.intro.is-ink     { background: var(--black); } /* follows the ink ripple the film ends on */
 .intro.is-leaving { opacity: 0; pointer-events: none; }
 
 html.intro-open body { overflow: hidden; }
@@ -265,7 +338,7 @@ html.intro-open body { overflow: hidden; }
   font-size: 11px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: #0b0b0c;
+  color: var(--black);
   background: rgba(241, 240, 235, 0.86);
   border: 1px solid rgba(11, 11, 12, 0.18);
   border-radius: 999px;
@@ -274,43 +347,60 @@ html.intro-open body { overflow: hidden; }
   transition: background-color 200ms var(--ease), color 200ms var(--ease);
 }
 .intro__skip:hover,
-.intro__skip:focus-visible { background: #0b0b0c; color: #f1f0eb; outline: none; }
+.intro__skip:focus-visible { background: var(--black); color: var(--paper); outline: none; }
 .intro__skip:focus-visible { box-shadow: 0 0 0 2px var(--neon-c); }
 
-/* hold the doors' entrance while the intro is up, so it plays at the handoff */
+/* hold the page's entrance while the intro is up, so it plays at the handoff */
 html.intro-open .site-title,
 html.intro-open .tagline,
 html.intro-open .panel,
+html.intro-open .chrome,
+html.intro-open .mark,
 html.intro-open .replay { animation: none; }
 
 /* ---------- entrance: default state is visible ---------- */
 @media (prefers-reduced-motion: no-preference) {
-  .site-title, .tagline, .panel, .replay {
-    animation: rise 640ms var(--ease) backwards;
+  .site-title, .tagline, .panel {
+    animation: rise 720ms var(--ease) backwards;
+  }
+  .chrome, .mark, .replay {
+    animation: fade 900ms var(--ease) backwards;
   }
   .site-title { animation-delay: 60ms; }
-  .tagline    { animation-delay: 140ms; }
-  .panel--pro      { animation-delay: 220ms; }
+  .tagline    { animation-delay: 160ms; }
+  .panel--pro      { animation-delay: 200ms; }
   .panel--personal { animation-delay: 300ms; }
-  .replay          { animation-delay: 380ms; }
+  .chrome, .mark, .replay { animation-delay: 380ms; }
+
+  /* the doors come up from lower down, like the splash's cards */
+  .panel { animation-name: rise-far; }
 
   @keyframes rise {
-    from { opacity: 0; transform: translateY(12px); filter: blur(4px); }
+    from { opacity: 0; transform: translateY(14px); filter: blur(4px); }
     to   { opacity: 1; transform: none; filter: none; }
+  }
+  @keyframes rise-far {
+    from { opacity: 0; transform: translateY(56px); }
+    to   { opacity: 1; transform: none; }
+  }
+  @keyframes fade {
+    from { opacity: 0; }
+    to   { opacity: 1; }
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .panel { transition: border-color 120ms linear; }
   .panel:hover, .panel:focus-visible { transform: none; }
-  .panel:hover .panel__arrow, .panel:focus-visible .panel__arrow { transform: none; }
+  .panel:hover .panel__arrow svg, .panel:focus-visible .panel__arrow svg { transform: none; }
 }
 
 /* ---------- responsive ---------- */
 @media (max-width: 660px) {
-  .split { grid-template-columns: 1fr; gap: 14px; }
-  .panel { min-height: 0; padding: 26px 24px 54px; }
-  .panel__arrow { left: 24px; bottom: 22px; }
-  .tagline { margin-bottom: 32px; }
+  .split { grid-template-columns: 1fr; }
+  .panel { min-height: 250px; }
+  .panel__shape { width: 116px; }
+  .chrome--tc, .chrome--tr { display: none; }
+  .mark--tr, .mark--br { display: none; }
   .intro__skip { right: 16px; bottom: 16px; }
 }

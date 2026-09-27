@@ -13,8 +13,10 @@ Rendered files live in `static-pages/media/` (`<name>.mp4` plus a `<name>.jpg` p
 
 **Live on the site:** `hypermodern-intro`, a cut of `hypermodern` (`?cut=intro`) that stops once
 the ink ripple fills the frame instead of wiping back to paper. The landing page plays it full
-screen once per session and dissolves from its last, near-black frame into the doors. `build.sh`
-copies only that cut; the three loops stay in the repo.
+screen once per session and dissolves from its last, near-black frame into the doors. It comes in
+two sizes: `hypermodern-intro` (1080p) and `hypermodern-intro-2160` (4K, drawn with `?scale=2`),
+and the page downloads 4K only where 1080p would be stretched. `build.sh` copies only the intro;
+the three loops stay in the repo.
 
 ## Preview
 
@@ -33,4 +35,6 @@ npm run render -- hypermodern-intro  # just one
 ```
 
 Every scene is a pure function of time (`draw(ctx, t)`) with no `Math.random()`, so a re-render
-draws the same frames and each loop ends where it begins.
+draws the same frames and each loop ends where it begins. That also means every font face is
+loaded before the first frame: a face that loads lazily mid-render draws a few frames in a
+fallback font.

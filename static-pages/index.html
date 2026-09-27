@@ -25,27 +25,39 @@
   </div>
 
   <main>
+    <span class="chrome chrome--tl" aria-hidden="true">builder.xyz</span>
+    <span class="chrome chrome--tc" aria-hidden="true">Index / 2026</span>
+    <span class="chrome chrome--tr" aria-hidden="true">30.31°N&nbsp; 104.02°W</span>
+    <span class="chrome chrome--bl" aria-hidden="true">Dogen — Austin Fay</span>
+    <span class="mark mark--tl" aria-hidden="true"></span>
+    <span class="mark mark--tr" aria-hidden="true"></span>
+    <span class="mark mark--bl" aria-hidden="true"></span>
+    <span class="mark mark--br" aria-hidden="true"></span>
+    <button class="replay" type="button" hidden>▶ Replay intro</button>
+
     <div class="container">
-      <h1 class="site-title">dogen.builder.xyz</h1>
-      <p class="tagline">Select Professional or Personal</p>
+      <header class="head">
+        <h1 class="site-title">dogen<span class="dot">.</span>builder<span class="dot">.</span>xyz</h1>
+        <p class="tagline">Select a door <span aria-hidden="true">→</span></p>
+      </header>
 
       <div class="split">
         <a href="pro/" class="panel panel--pro">
           <span class="panel__label">Professional</span>
+          <canvas class="panel__shape" data-shape="sphere" aria-hidden="true"></canvas>
           <span class="panel__title">Austin Fay</span>
-          <span class="panel__desc">Division Order Analyst · Oil &amp; Gas · Financial Markets</span>
-          <span class="panel__arrow" aria-hidden="true">→</span>
+          <span class="panel__desc">Division Order Analyst<br>Oil &amp; Gas · Financial Markets</span>
+          <span class="panel__arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4.5 12h14.5M13 6.5 18.5 12 13 17.5"/></svg></span>
         </a>
 
         <a href="garden.html" class="panel panel--personal">
           <span class="panel__label">Personal</span>
+          <canvas class="panel__shape" data-shape="torus" aria-hidden="true"></canvas>
           <span class="panel__title">The Workshop</span>
-          <span class="panel__desc">Reading · Tinkering · Mezcal · Two-strokes</span>
-          <span class="panel__arrow" aria-hidden="true">→</span>
+          <span class="panel__desc">Reading · Tinkering<br>Mezcal · Two-strokes</span>
+          <span class="panel__arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4.5 12h14.5M13 6.5 18.5 12 13 17.5"/></svg></span>
         </a>
       </div>
-
-      <button class="replay" type="button" hidden>▶ Replay intro</button>
     </div>
   </main>
 
@@ -66,6 +78,66 @@
       }
     }
 
+    // The splash's point clouds, drawn live at the screen's pixel density so they stay sharp.
+    // One still frame with reduced motion; no drawing while the intro covers the page.
+    (() => {
+      const canvases = [...document.querySelectorAll('.panel__shape')];
+      const TAU = Math.PI * 2;
+      const sphere = [];
+      for (let i = 0; i < 260; i++) {
+        const y = 1 - (i / 259) * 2;
+        const r = Math.sqrt(1 - y * y);
+        sphere.push([Math.cos(i * 2.399963) * r, y, Math.sin(i * 2.399963) * r]);
+      }
+      const torus = [];
+      for (let i = 0; i < 44; i++) {
+        for (let j = 0; j < 14; j++) {
+          const u = (i / 44) * TAU;
+          const v = (j / 14) * TAU;
+          const ring = 0.72 + 0.28 * Math.cos(v);
+          torus.push([ring * Math.cos(u), 0.28 * Math.sin(v), ring * Math.sin(u)]);
+        }
+      }
+
+      function draw(t) {
+        const ay = t * 0.9;
+        const ax = 0.5 + 0.2 * Math.sin(t * 0.6);
+        const [sinY, cosY, sinX, cosX] = [Math.sin(ay), Math.cos(ay), Math.sin(ax), Math.cos(ax)];
+        for (const c of canvases) {
+          const size = c.clientWidth;
+          if (!size) continue;
+          const dpr = window.devicePixelRatio || 1;
+          if (c.width !== Math.round(size * dpr)) c.width = c.height = Math.round(size * dpr);
+          const g = c.getContext('2d');
+          g.setTransform(dpr, 0, 0, dpr, 0, 0);
+          g.clearRect(0, 0, size, size);
+          g.fillStyle = getComputedStyle(c).color;
+          const R = size * 0.4;
+          const unit = size / 300;
+          for (const [px, py, pz] of c.dataset.shape === 'torus' ? torus : sphere) {
+            const x1 = px * cosY + pz * sinY;
+            const z1 = -px * sinY + pz * cosY;
+            const depth = (py * sinX + z1 * cosX + 1) / 2;
+            g.globalAlpha = 0.18 + 0.82 * depth;
+            g.beginPath();
+            g.arc(size / 2 + x1 * R, size / 2 + (py * cosX - z1 * sinX) * R, (1.3 + depth * 2.6) * unit, 0, TAU);
+            g.fill();
+          }
+        }
+      }
+
+      if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        draw(1.2);
+        addEventListener('resize', () => draw(1.2));
+      } else {
+        const loop = (now) => {
+          if (!document.documentElement.classList.contains('intro-open')) draw(now / 1000);
+          requestAnimationFrame(loop);
+        };
+        requestAnimationFrame(loop);
+      }
+    })();
+
     // Full-screen intro: the hypermodern cut, which ends on the same near-black as this
     // page and dissolves into it. Any failure (autoplay blocked, load error, a stall)
     // reveals the doors straight away, so the intro can never hold them hostage.
@@ -80,19 +152,41 @@
       let stall;
       let returnTo = null;
 
-      function play(from) {
+      // 4K only where 1080p would be visibly stretched (big or high-density screens), and only
+      // when the device says it decodes 4K smoothly and the connection isn't slow or saving data.
+      async function rendition() {
+        const cover = matchMedia('(min-aspect-ratio: 8/5) and (max-aspect-ratio: 2/1)').matches;
+        const fill = cover ? Math.max(innerWidth, innerHeight * 16 / 9) : Math.min(innerWidth, innerHeight * 16 / 9);
+        const net = navigator.connection || {};
+        if (fill * (window.devicePixelRatio || 1) < 2200 || net.saveData || (net.downlink && net.downlink < 8)) {
+          return 'hypermodern-intro.mp4';
+        }
+        const type = 'video/mp4; codecs="avc1.640034"';
+        let smooth = video.canPlayType(type) !== '';
+        try {
+          const info = await navigator.mediaCapabilities.decodingInfo({
+            type: 'file',
+            video: { contentType: type, width: 3840, height: 2160, bitrate: 8e6, framerate: 60 },
+          });
+          smooth = info.supported && info.smooth;
+        } catch (e) {}
+        return smooth ? 'hypermodern-intro-2160.mp4' : 'hypermodern-intro.mp4';
+      }
+
+      async function play(from) {
         open = true;
         returnTo = from || null;
         root.classList.add('intro-open');
         intro.classList.remove('is-leaving', 'is-ink');
         main.inert = true;
         try { sessionStorage.setItem('intro-seen', '1'); } catch (e) {}
+        stall = setTimeout(finish, 3000);
         if (!video.getAttribute('src')) {
           video.poster = 'media/hypermodern-intro.jpg';
-          video.src = 'media/hypermodern-intro.mp4';
+          video.src = 'media/' + (await rendition());
+          if (!open) return; // skipped while choosing
         }
         video.currentTime = 0;
-        stall = setTimeout(finish, 3000);
         video.play().catch(finish);
       }
 

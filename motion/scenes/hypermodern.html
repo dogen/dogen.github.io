@@ -29,7 +29,7 @@
       // Swiss grid, kinetic type, product-film polish. Four verbs wipe through in
       // colour, the wordmark assembles on glass, then the two doors rise and a
       // cursor hovers each one, clicks, and ripples back to the empty grid.
-      const { W, H, lerp, span, ease, layer, decode } = M
+      const { W, H, SCALE, lerp, span, ease, layer, decode } = M
 
       const C = {
         paper: "#f1f0eb",
@@ -263,7 +263,7 @@
           g.clip()
           g.fillStyle = C.paper
           g.fillRect(0, 0, W, H)
-          g.filter = "blur(18px)"
+          g.filter = `blur(${18 * SCALE}px)`
           g.globalAlpha = orb * 0.9
           g.drawImage(blob, 0, 0, W, H)
           g.filter = "none"
@@ -355,8 +355,8 @@
 
           g.save()
           g.shadowColor = `rgba(0, 0, 0, ${0.3 * hover})`
-          g.shadowBlur = 60
-          g.shadowOffsetY = 30 * hover
+          g.shadowBlur = 60 * SCALE
+          g.shadowOffsetY = 30 * hover * SCALE
           g.fillStyle = c.bg
           g.beginPath()
           g.roundRect(x, y, CARD.w, CARD.h, CARD.r)
@@ -594,8 +594,8 @@
         g.lineTo(22, 21.5)
         g.closePath()
         g.shadowColor = "rgba(0, 0, 0, 0.3)"
-        g.shadowBlur = 10
-        g.shadowOffsetY = 4
+        g.shadowBlur = 10 * SCALE
+        g.shadowOffsetY = 4 * SCALE
         g.fillStyle = C.ink
         g.fill()
         g.shadowColor = "transparent"

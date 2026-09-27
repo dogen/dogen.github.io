@@ -16,12 +16,33 @@ import { chromium } from "playwright-core"
 const here = path.dirname(fileURLToPath(import.meta.url))
 const outDir = path.resolve(here, "../static-pages/media")
 
-// Every video we make. A cut renders an existing scene with extra query parameters.
+// Every video we make. A cut renders an existing scene with extra query parameters, and
+// may override the scene's quality (crf), add encoder options, or skip the poster.
+//
+// The landing intro is shown full screen, so it favours clean edges over size: animation
+// tuning keeps flat colour crisp, aq-mode 3 spends more bits on dark gradients, and the
+// 2160 cut is redrawn at 3840x2160 for screens where 1080p would be stretched. Levels are
+// pinned (4 reference frames fits both) so hardware decoders and Safari take them.
+const INTRO = ["-tune", "animation", "-x264-params", "aq-mode=3", "-refs", "4"]
 const RENDERS = [
   { name: "cyberpunk" },
   { name: "analog" },
   { name: "hypermodern" },
-  { name: "hypermodern-intro", scene: "hypermodern", query: "cut=intro" }, // landing page intro
+  {
+    name: "hypermodern-intro",
+    scene: "hypermodern",
+    query: "cut=intro",
+    crf: 18,
+    encode: [...INTRO, "-level", "4.2"],
+  },
+  {
+    name: "hypermodern-intro-2160",
+    scene: "hypermodern",
+    query: "cut=intro&scale=2",
+    crf: 20,
+    encode: [...INTRO, "-level", "5.2"],
+    poster: false,
+  },
 ]
 const args = process.argv.slice(2)
 const unknown = args.filter((a) => !RENDERS.some((r) => r.name === a))
@@ -43,7 +64,14 @@ try {
   await browser.close()
 }
 
-async function render({ name, scene = name, query }) {
+async function render({
+  name,
+  scene = name,
+  query,
+  crf: quality,
+  encode = [],
+  poster: still = true,
+}) {
   const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } })
   const file = pathToFileURL(path.join(here, "scenes", `${scene}.html`))
   await page.goto(`${file}?render${query ? `&${query}` : ""}`)
@@ -57,8 +85,8 @@ async function render({ name, scene = name, query }) {
   const ffmpeg = spawn("ffmpeg", [
     "-y", "-loglevel", "error",
     "-f", "image2pipe", "-framerate", String(fps), "-c:v", "png", "-i", "-",
-    "-c:v", "libx264", "-preset", "slow", "-crf", String(crf), "-pix_fmt", "yuv420p",
-    "-movflags", "+faststart", "-an", mp4,
+    "-c:v", "libx264", "-preset", "slow", "-crf", String(quality ?? crf), ...encode,
+    "-pix_fmt", "yuv420p", "-movflags", "+faststart", "-an", mp4,
   ], { stdio: ["pipe", "inherit", "inherit"] })
   const exited = once(ffmpeg, "close")
 
@@ -73,7 +101,8 @@ async function render({ name, scene = name, query }) {
   const [code] = await exited
   if (code !== 0) throw new Error(`ffmpeg exited with ${code} while encoding ${name}`)
 
-  await writeFile(path.join(outDir, `${name}.jpg`), await grab(page, poster, "image/jpeg"))
+  if (still)
+    await writeFile(path.join(outDir, `${name}.jpg`), await grab(page, poster, "image/jpeg"))
   console.log(`\r${name}: ${frames} frames -> ${path.relative(process.cwd(), mp4)}`)
   await page.close()
 }

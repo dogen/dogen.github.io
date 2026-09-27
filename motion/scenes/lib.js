@@ -7,10 +7,15 @@
  *
  * Opened directly in a browser, a scene plays live and loops. Opened with
  * ?render, it waits for render.mjs to call window.renderFrame(t).
+ *
+ * Scenes are laid out on a 1920x1080 stage. ?scale=2 draws that stage at 3840x2160:
+ * shapes and type are redrawn natively, not stretched. Shadow blur/offset and
+ * ctx.filter ignore the transform, so scenes multiply those by SCALE themselves.
  */
 ;(() => {
   const W = 1920
   const H = 1080
+  const SCALE = Number(new URLSearchParams(location.search).get("scale")) || 1
 
   const clamp = (x, lo = 0, hi = 1) => Math.min(hi, Math.max(lo, x))
   const lerp = (a, b, k) => a + (b - a) * k
@@ -87,8 +92,8 @@
   /** Register a scene: expose the hooks render.mjs drives, or play it live. */
   function scene({ duration, fps, crf = 23, poster = 0, fonts = [], setup, draw }) {
     const canvas = document.querySelector("canvas")
-    canvas.width = W
-    canvas.height = H
+    canvas.width = W * SCALE
+    canvas.height = H * SCALE
     const ctx = canvas.getContext("2d")
 
     window.SCENE = { duration, fps, crf, poster }
@@ -96,11 +101,15 @@
       const loaded = await Promise.all(fonts.map((f) => document.fonts.load(f)))
       const missing = fonts.filter((_, i) => loaded[i].length === 0)
       if (missing.length) throw new Error(`fonts failed to load: ${missing.join(", ")}`)
+      // Faces load lazily on first use, which mid-render means a few frames drawn in a
+      // fallback font. Load every face the page declares up front so frames stay pure.
+      await Promise.all([...document.fonts].map((f) => f.load().catch(() => {})))
       await document.fonts.ready
       setup?.()
     })()
     window.renderFrame = (t) => {
       ctx.save()
+      ctx.setTransform(SCALE, 0, 0, SCALE, 0, 0)
       draw(ctx, t, Math.round(t * fps))
       ctx.restore()
     }
@@ -119,6 +128,7 @@
   window.M = {
     W,
     H,
+    SCALE,
     clamp,
     lerp,
     span,
