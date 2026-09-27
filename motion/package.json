@@ -1,0 +1,12 @@
+{
+  "name": "builder-xyz-motion",
+  "private": true,
+  "type": "module",
+  "description": "Canvas motion-graphics scenes for the builder.xyz landing page, rendered to video.",
+  "scripts": {
+    "render": "node render.mjs"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.63.0"
+  }
+}

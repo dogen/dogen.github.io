@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>builder.xyz · motion preview</title>
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Newsreader:wght@500&family=Space+Mono:wght@400;700&display=swap"
+    />
+    <style>
+      :root {
+        --bg: #100f0d;
+        --ink: #ece9e2;
+        --ink-3: rgba(236, 233, 226, 0.5);
+        --hair: rgba(236, 233, 226, 0.12);
+        --mono: "Space Mono", ui-monospace, monospace;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+      }
+      body {
+        background: var(--bg);
+        color: var(--ink);
+        font-family: var(--mono);
+        padding: 48px 16px 80px;
+      }
+      main {
+        max-width: 1100px;
+        margin: 0 auto;
+      }
+      h1 {
+        font-size: clamp(1.5rem, 4vw, 2.4rem);
+        color: #1fd6ff;
+        letter-spacing: -0.03em;
+      }
+      .lede {
+        color: var(--ink-3);
+        font-size: 12px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        margin: 12px 0 48px;
+      }
+      article {
+        border-top: 1px solid var(--hair);
+        padding: 28px 0 48px;
+      }
+      h2 {
+        font-family: "Newsreader", Georgia, serif;
+        font-weight: 500;
+        font-size: 1.7rem;
+      }
+      .meta {
+        color: var(--ink-3);
+        font-size: 12px;
+        margin: 6px 0 18px;
+      }
+      .meta a {
+        color: inherit;
+      }
+      video {
+        display: block;
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        background: #000;
+        border-radius: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>dogen.builder.xyz</h1>
+      <p class="lede">Landing page motion · three takes · not wired into the live site yet</p>
+
+      <article>
+        <h2>Cyberpunk — access node</h2>
+        <p class="meta">
+          13s loop · 30fps · <a href="scenes/cyberpunk.html">live canvas version</a>
+        </p>
+        <video
+          src="../static-pages/media/cyberpunk.mp4"
+          poster="../static-pages/media/cyberpunk.jpg"
+          autoplay
+          muted
+          loop
+          playsinline
+          controls
+        ></video>
+      </article>
+
+      <article>
+        <h2>Old-school analog — station break</h2>
+        <p class="meta">12s loop · 24fps · <a href="scenes/analog.html">live canvas version</a></p>
+        <video
+          src="../static-pages/media/analog.mp4"
+          poster="../static-pages/media/analog.jpg"
+          autoplay
+          muted
+          loop
+          playsinline
+          controls
+        ></video>
+      </article>
+
+      <article>
+        <h2>Hypermodern — kinetic type</h2>
+        <p class="meta">
+          12s loop · 60fps · <a href="scenes/hypermodern.html">live canvas version</a>
+        </p>
+        <video
+          src="../static-pages/media/hypermodern.mp4"
+          poster="../static-pages/media/hypermodern.jpg"
+          autoplay
+          muted
+          loop
+          playsinline
+          controls
+        ></video>
+      </article>
+    </main>
+  </body>
+</html>

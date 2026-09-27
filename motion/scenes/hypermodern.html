@@ -1,0 +1,602 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>builder.xyz · hypermodern</title>
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400..700&family=Space+Mono:wght@400;700&family=Unbounded:wght@200..900&display=block"
+    />
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #000;
+      }
+      canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas></canvas>
+    <script src="lib.js"></script>
+    <script>
+      // Swiss grid, kinetic type, product-film polish. Four verbs wipe through in
+      // colour, the wordmark assembles on glass, then the two doors rise and a
+      // cursor hovers each one, clicks, and ripples back to the empty grid.
+      const { W, H, lerp, span, ease, layer, decode } = M
+
+      const C = {
+        paper: "#f1f0eb",
+        ink: "#0b0b0c",
+        cyan: "#1fd6ff",
+        yellow: "#d7ff1e",
+      }
+      const DISPLAY = "Unbounded, sans-serif"
+      const SANS = '"Hanken Grotesk", sans-serif'
+      const MONO = '"Space Mono", monospace'
+      const MARGIN = 128
+      const TAU = Math.PI * 2
+
+      const SLOTS = [
+        {
+          at: 0.8,
+          end: 1.85,
+          word: "BUILD.",
+          bg: C.ink,
+          fg: C.paper,
+          accent: C.yellow,
+          caption: "An ai-native tool for royalty ownership recovery.",
+          tag: "BTRAIL.IO",
+        },
+        {
+          at: 1.85,
+          end: 2.9,
+          word: "READ.",
+          bg: C.yellow,
+          fg: C.ink,
+          accent: C.ink,
+          caption: "Kierkegaard, McGilchrist, Meadows, Vonnegut.",
+          tag: "/READING",
+        },
+        {
+          at: 2.9,
+          end: 3.95,
+          word: "TINKER.",
+          bg: C.cyan,
+          fg: C.ink,
+          accent: C.ink,
+          caption: "Raspberry Pi, EndeavourOS, a 1983 XR200 on the porch.",
+          tag: "/PROJECTS",
+        },
+        {
+          at: 3.95,
+          end: 5.0,
+          word: "REPEAT.",
+          bg: C.paper,
+          fg: C.ink,
+          accent: C.ink,
+          caption: "Strong opinions, weakly held.",
+          tag: "/ABOUT",
+        },
+      ]
+
+      const CARDS = [
+        {
+          x: MARGIN,
+          label: "PROFESSIONAL",
+          title: "Austin Fay",
+          lines: ["Division Order Analyst", "Oil & Gas · Financial Markets"],
+          bg: C.ink,
+          fg: C.paper,
+          accent: C.cyan,
+          shape: "sphere",
+        },
+        {
+          x: W / 2 + 16,
+          label: "PERSONAL",
+          title: "The Workshop",
+          lines: ["Reading · Tinkering", "Mezcal · Two-strokes"],
+          bg: C.yellow,
+          fg: C.ink,
+          accent: C.ink,
+          shape: "torus",
+        },
+      ]
+      const CARD = { y: 262, w: W / 2 - 16 - MARGIN, h: 640, r: 36 }
+
+      // cursor keyframes: [time, x, y]
+      const CURSOR = [
+        [7.9, 1680, 1180],
+        [8.55, 610, 700],
+        [9.25, 610, 700],
+        [9.85, 1450, 700],
+        [10.4, 1450, 700],
+      ]
+      const CLICK = 10.25
+
+      const [blob, bg] = layer(480, 270)
+      let spherePts, torusPts
+
+      M.scene({
+        duration: 12,
+        fps: 60,
+        crf: 22,
+        poster: 8.9,
+        fonts: [
+          `800 100px ${DISPLAY}`,
+          `300 100px ${DISPLAY}`,
+          `500 40px ${SANS}`,
+          `400 20px ${MONO}`,
+        ],
+        setup() {
+          spherePts = fibonacciSphere(420)
+          torusPts = torus(56, 16)
+        },
+        draw(g, t, frame) {
+          background(g, t)
+          intro(g, t)
+          for (let i = 0; i < SLOTS.length; i++)
+            if (t >= SLOTS[i].at - 0.05 && t < SLOTS[i].end) slot(g, SLOTS[i], i, t)
+          if (t >= 4.95 && t < 10.6) wordmark(g, t, frame)
+          if (t >= 6.95 && t < 11.2) doors(g, t)
+          ripple(g, t)
+          chrome(g, t, frame)
+        },
+      })
+
+      // ---------- sections ----------
+
+      function background(g, t) {
+        g.fillStyle = C.paper
+        g.fillRect(0, 0, W, H)
+        for (const s of SLOTS) {
+          const k = ease.inOutExpo(span(t, s.at - 0.05, s.at + 0.35))
+          if (!k) break
+          const y = H * (1 - k)
+          g.fillStyle = s.bg
+          g.fillRect(0, y, W, H - y)
+        }
+      }
+
+      function intro(g, t) {
+        if (t >= 1.2) return
+        const k = ease.inOutExpo(span(t, 0.08, 0.7))
+        g.fillStyle = C.ink
+        g.fillRect(MARGIN, 538, (W - 2 * MARGIN) * k, 3)
+        const a = span(t, 0.25, 0.5)
+        g.globalAlpha = a
+        g.font = `400 18px ${MONO}`
+        g.letterSpacing = "4px"
+        g.textAlign = "left"
+        g.fillText("INDEX 001", MARGIN, 516)
+        g.textAlign = "right"
+        g.fillText("DOGEN.BUILDER.XYZ", W - MARGIN, 516)
+        g.letterSpacing = "0px"
+        g.globalAlpha = 1
+      }
+
+      function slot(g, s, i, t) {
+        const wipeY = H * (1 - ease.inOutExpo(span(t, s.at - 0.05, s.at + 0.35)))
+        const baseline = 640
+
+        // size from the final weight so the word doesn't breathe out of its column
+        g.font = `800 100px ${DISPLAY}`
+        const size = Math.min(
+          290,
+          Math.floor((100 * (W - 2 * MARGIN)) / g.measureText(s.word).width),
+        )
+        const weight = Math.round(lerp(200, 800, ease.outExpo(span(t, s.at + 0.12, s.at + 0.8))))
+        g.font = `${weight} ${size}px ${DISPLAY}`
+        g.fillStyle = s.fg
+        g.textAlign = "left"
+        // letters are masked to their line and to the part of the screen the wipe has reached
+        const top = Math.max(baseline - size * 0.95, wipeY)
+        const bottom = baseline + size * 0.25
+        if (bottom > top) {
+          g.save()
+          g.beginPath()
+          g.rect(0, top, W, bottom - top)
+          g.clip()
+          for (let j = 0; j < s.word.length; j++) {
+            const kin = ease.outExpo(span(t, s.at + 0.12 + j * 0.04, s.at + 0.78 + j * 0.04))
+            const kout = ease.inExpo(span(t, s.end - 0.34 + j * 0.02, s.end - 0.04 + j * 0.02))
+            const y = baseline + size * (1 - kin) - size * 1.15 * kout
+            g.fillText(s.word[j], MARGIN - size * 0.04 + g.measureText(s.word.slice(0, j)).width, y)
+          }
+          g.restore()
+        }
+
+        const kin = ease.outExpo(span(t, s.at + 0.3, s.at + 0.85))
+        const kout = ease.inExpo(span(t, s.end - 0.3, s.end - 0.04))
+        g.globalAlpha = kin * (1 - kout)
+        g.font = `400 20px ${MONO}`
+        g.letterSpacing = "4px"
+        g.fillText(`0${i + 1} / 04`, MARGIN, 250 - 20 * (1 - kin))
+        g.letterSpacing = "0px"
+        g.globalAlpha = 1
+
+        const rule = ease.inOutExpo(span(t, s.at + 0.2, s.at + 0.8))
+        const gone = ease.inOutExpo(span(t, s.end - 0.3, s.end))
+        g.fillStyle = s.accent
+        g.fillRect(MARGIN + (W - 2 * MARGIN) * gone, 712, (W - 2 * MARGIN) * (rule - gone), 3)
+
+        const dy = 26 * (1 - kin) - 26 * kout
+        g.globalAlpha = kin * (1 - kout)
+        g.fillStyle = s.fg
+        g.font = `500 36px ${SANS}`
+        g.fillText(s.caption, MARGIN, 786 + dy)
+        g.textAlign = "right"
+        g.font = `700 18px ${MONO}`
+        g.letterSpacing = "4px"
+        g.fillText(`${s.tag} ↗`, W - MARGIN, 782 + dy)
+        g.letterSpacing = "0px"
+        g.globalAlpha = 1
+      }
+
+      function wordmark(g, t, frame) {
+        const text = "dogen.builder.xyz"
+        const appear = ease.outExpo(span(t, 5.0, 5.65))
+        const leave = ease.inOutExpo(span(t, 6.5, 7.0))
+
+        // glass: two brand blobs orbiting behind frosted plate
+        const orb = appear * (1 - leave)
+        if (orb > 0) {
+          blobs(t)
+          g.globalAlpha = orb
+          g.drawImage(blob, 0, 0, W, H)
+          const pw = 1560 * appear
+          const ph = 380 * (1 - leave)
+          g.save()
+          g.beginPath()
+          g.roundRect(W / 2 - pw / 2, 560 - ph / 2 - 40, pw, ph, 44)
+          g.clip()
+          g.fillStyle = C.paper
+          g.fillRect(0, 0, W, H)
+          g.filter = "blur(18px)"
+          g.globalAlpha = orb * 0.9
+          g.drawImage(blob, 0, 0, W, H)
+          g.filter = "none"
+          g.fillStyle = "rgba(255, 255, 255, 0.42)"
+          g.fillRect(0, 0, W, H)
+          g.restore()
+          g.strokeStyle = "rgba(255, 255, 255, 0.9)"
+          g.lineWidth = 2
+          g.beginPath()
+          g.roundRect(W / 2 - pw / 2, 560 - ph / 2 - 40, pw, ph, 44)
+          g.stroke()
+          g.globalAlpha = 1
+        }
+
+        // letters settle in from the right while the weight drops from heavy to book
+        const weight = Math.round(lerp(900, 500, ease.outExpo(span(t, 5.2, 6.1))))
+        g.font = `500 100px ${DISPLAY}`
+        const size = Math.floor((100 * 1380) / g.measureText(text).width)
+        g.font = `${weight} ${size}px ${DISPLAY}`
+        const width = g.measureText(text).width
+        const lockSize = 30
+        const scale = lerp(1, lockSize / size, leave)
+        const x = lerp(W / 2 - width / 2, MARGIN, leave)
+        const y = lerp(560, 176, leave)
+
+        g.save()
+        g.translate(x, y)
+        g.scale(scale, scale)
+        g.textAlign = "left"
+        for (let i = 0; i < text.length; i++) {
+          const k = ease.outExpo(span(t, 5.15 + i * 0.03, 5.85 + i * 0.03))
+          if (!k) break
+          g.globalAlpha = k
+          g.fillStyle = text[i] === "." ? "#00a9d6" : C.ink
+          g.fillText(text[i], g.measureText(text.slice(0, i)).width + 90 * (1 - k), 0)
+        }
+        g.restore()
+        g.globalAlpha = 1
+
+        const sub = span(t, 5.6, 6.3) * (1 - span(t, 6.45, 6.65))
+        if (sub) {
+          g.globalAlpha = sub
+          g.font = `400 20px ${MONO}`
+          g.letterSpacing = "8px"
+          g.textAlign = "center"
+          g.fillStyle = C.ink
+          g.fillText(
+            decode("SELECT PROFESSIONAL OR PERSONAL", span(t, 5.6, 6.25), frame, 3),
+            W / 2 + 4,
+            668,
+          )
+          g.letterSpacing = "0px"
+          g.globalAlpha = 1
+        }
+
+        const tag = span(t, 7.1, 7.5)
+        if (tag) {
+          g.globalAlpha = tag
+          g.font = `700 18px ${MONO}`
+          g.letterSpacing = "4px"
+          g.textAlign = "right"
+          g.fillStyle = C.ink
+          g.fillText("SELECT A DOOR →", W - MARGIN, 172)
+          g.letterSpacing = "0px"
+          g.globalAlpha = 1
+        }
+      }
+
+      function doors(g, t) {
+        const [cx, cy] = cursorAt(t)
+        const hovers = [
+          ease.outCubic(span(t, 8.38, 8.6)) * (1 - ease.outCubic(span(t, 9.3, 9.48))),
+          ease.outCubic(span(t, 9.7, 9.9)),
+        ]
+
+        // one title size for both cards, fitted to the longer one
+        g.font = `700 100px ${DISPLAY}`
+        const titleSize = Math.min(
+          96,
+          ...CARDS.map((c) => Math.floor((100 * (CARD.w - 112)) / g.measureText(c.title).width)),
+        )
+
+        CARDS.forEach((c, i) => {
+          const rise = ease.outExpo(span(t, 7.0 + i * 0.12, 7.9 + i * 0.12))
+          if (!rise) return
+          const hover = hovers[i]
+          const x = c.x
+          const y = CARD.y + (1 - rise) * 760 - 14 * hover
+
+          g.save()
+          g.shadowColor = `rgba(0, 0, 0, ${0.3 * hover})`
+          g.shadowBlur = 60
+          g.shadowOffsetY = 30 * hover
+          g.fillStyle = c.bg
+          g.beginPath()
+          g.roundRect(x, y, CARD.w, CARD.h, CARD.r)
+          g.fill()
+          g.restore()
+
+          g.save()
+          g.beginPath()
+          g.roundRect(x, y, CARD.w, CARD.h, CARD.r)
+          g.clip()
+
+          // the live site's pointer-tracked glow
+          if (hover) {
+            const glow = g.createRadialGradient(cx, cy, 0, cx, cy, 420)
+            const tint = c.bg === C.ink ? "31, 214, 255" : "255, 255, 255"
+            glow.addColorStop(0, `rgba(${tint}, ${0.28 * hover})`)
+            glow.addColorStop(1, `rgba(${tint}, 0)`)
+            g.fillStyle = glow
+            g.fillRect(x, y, CARD.w, CARD.h)
+          }
+
+          const content = span(t, 7.35 + i * 0.12, 7.9 + i * 0.12)
+          g.globalAlpha = content
+          const shift = 30 * (1 - ease.outExpo(content))
+          const px = x + 56
+
+          points(
+            g,
+            c.shape === "sphere" ? spherePts : torusPts,
+            x + CARD.w - 200,
+            y + 196,
+            128,
+            t,
+            c.accent,
+          )
+
+          g.strokeStyle = c.fg
+          g.globalAlpha = content * 0.55
+          g.lineWidth = 2
+          g.font = `700 17px ${MONO}`
+          g.letterSpacing = "4px"
+          const pill = g.measureText(c.label).width + 40
+          g.beginPath()
+          g.roundRect(px, y + 56 + shift, pill, 44, 22)
+          g.stroke()
+          g.globalAlpha = content
+          g.fillStyle = c.fg
+          g.textAlign = "left"
+          g.fillText(c.label, px + 22, y + 84 + shift)
+          g.letterSpacing = "0px"
+
+          g.font = `700 ${titleSize}px ${DISPLAY}`
+          g.fillText(c.title, px - 4, y + CARD.h - 220 + shift)
+          g.font = `400 31px ${SANS}`
+          g.globalAlpha = content * 0.75
+          c.lines.forEach((line, j) => g.fillText(line, px, y + CARD.h - 150 + j * 42 + shift))
+          g.globalAlpha = content
+
+          // arrow button
+          const bx = x + CARD.w - 100
+          const by = y + CARD.h - 100
+          g.beginPath()
+          g.arc(bx, by, 44, 0, TAU)
+          if (hover) {
+            g.fillStyle = c.bg === C.ink ? C.cyan : C.ink
+            g.globalAlpha = content * hover
+            g.fill()
+            g.globalAlpha = content
+          }
+          g.strokeStyle = c.fg
+          g.lineWidth = 2
+          g.globalAlpha = content * (0.45 + 0.55 * (1 - hover))
+          g.stroke()
+          g.globalAlpha = content
+          const ax = bx - 14 + 8 * hover
+          g.strokeStyle = hover > 0.5 ? (c.bg === C.ink ? C.ink : C.yellow) : c.fg
+          g.lineWidth = 3
+          g.lineCap = "round"
+          g.beginPath()
+          g.moveTo(ax, by)
+          g.lineTo(ax + 28, by)
+          g.moveTo(ax + 16, by - 12)
+          g.lineTo(ax + 28, by)
+          g.lineTo(ax + 16, by + 12)
+          g.stroke()
+          g.restore()
+        })
+
+        if (t >= CURSOR[0][0]) cursor(g, cx, cy, t)
+      }
+
+      /** Click ripple: an ink ring races out, paper follows it, and the grid is empty again. */
+      function ripple(g, t) {
+        const [x, y] = CURSOR[CURSOR.length - 1].slice(1)
+        const inkR = 2400 * ease.inOutExpo(span(t, CLICK + 0.05, CLICK + 0.8))
+        const paperR = 2400 * ease.inOutExpo(span(t, CLICK + 0.25, CLICK + 1.05))
+        if (!inkR) return
+        g.fillStyle = C.ink
+        g.beginPath()
+        g.arc(x, y, inkR, 0, TAU)
+        g.fill()
+        if (!paperR) return
+        g.fillStyle = C.paper
+        g.beginPath()
+        g.arc(x, y, paperR, 0, TAU)
+        g.fill()
+      }
+
+      /** Grid, registration marks and micro-labels. Drawn in difference so they read on any colour. */
+      function chrome(g, t, frame) {
+        g.save()
+        g.globalCompositeOperation = "difference"
+        g.fillStyle = "rgba(255, 255, 255, 0.07)"
+        for (let i = 0; i <= 12; i++) g.fillRect(MARGIN + (i * (W - 2 * MARGIN)) / 12, 0, 1, H)
+        g.fillStyle = "rgba(255, 255, 255, 0.85)"
+        for (const [x, y] of [
+          [MARGIN, 110],
+          [W - MARGIN, 110],
+          [MARGIN, H - 104],
+          [W - MARGIN, H - 104],
+        ]) {
+          g.fillRect(x - 9, y, 18, 1.5)
+          g.fillRect(x, y - 9, 1.5, 18)
+        }
+        g.font = `400 15px ${MONO}`
+        g.letterSpacing = "3px"
+        g.textAlign = "left"
+        g.fillText("BUILDER.XYZ", MARGIN, 72)
+        g.fillText("DOGEN — AUSTIN FAY", MARGIN, H - 52)
+        g.textAlign = "center"
+        g.fillText("INDEX / 2026", W / 2, 72)
+        g.textAlign = "right"
+        g.fillText("30.31°N  104.02°W", W - MARGIN, 72)
+        g.fillText(`FR ${String(frame).padStart(4, "0")}`, W - MARGIN, H - 52)
+        g.fillRect(W - MARGIN - 380, H - 58, 180, 1)
+        g.fillRect(W - MARGIN - 380, H - 60, 180 * (t / 12), 5)
+        g.restore()
+      }
+
+      // ---------- pieces ----------
+
+      function blobs(t) {
+        bg.fillStyle = C.paper
+        bg.fillRect(0, 0, 480, 270)
+        bg.filter = "blur(26px)"
+        const spots = [
+          [C.cyan, 0, 92],
+          [C.yellow, Math.PI, 84],
+          ["#ffffff", Math.PI / 2, 60],
+        ]
+        for (const [color, phase, r] of spots) {
+          bg.fillStyle = color
+          bg.beginPath()
+          bg.arc(
+            240 + 120 * Math.cos(t * 1.1 + phase),
+            140 + 48 * Math.sin(t * 1.4 + phase),
+            r,
+            0,
+            TAU,
+          )
+          bg.fill()
+        }
+        bg.filter = "none"
+      }
+
+      function points(g, pts, cx, cy, radius, t, color) {
+        const ay = t * 0.9
+        const ax = 0.5 + 0.2 * Math.sin(t * 0.6)
+        const [sy, cyy, sx, cxx] = [Math.sin(ay), Math.cos(ay), Math.sin(ax), Math.cos(ax)]
+        g.fillStyle = color
+        const base = g.globalAlpha
+        for (const [px, py, pz] of pts) {
+          const x1 = px * cyy + pz * sy
+          const z1 = -px * sy + pz * cyy
+          const y2 = py * cxx - z1 * sx
+          const z2 = py * sx + z1 * cxx
+          const depth = (z2 + 1) / 2
+          g.globalAlpha = base * (0.18 + 0.82 * depth)
+          g.beginPath()
+          g.arc(cx + x1 * radius, cy + y2 * radius, 1.3 + depth * 2.6, 0, TAU)
+          g.fill()
+        }
+        g.globalAlpha = base
+      }
+
+      function fibonacciSphere(n) {
+        const out = []
+        for (let i = 0; i < n; i++) {
+          const y = 1 - (i / (n - 1)) * 2
+          const r = Math.sqrt(1 - y * y)
+          const a = i * 2.399963
+          out.push([Math.cos(a) * r, y, Math.sin(a) * r])
+        }
+        return out
+      }
+
+      function torus(nu, nv) {
+        const out = []
+        for (let i = 0; i < nu; i++) {
+          for (let j = 0; j < nv; j++) {
+            const u = (i / nu) * TAU
+            const v = (j / nv) * TAU
+            const ring = 0.72 + 0.28 * Math.cos(v)
+            out.push([ring * Math.cos(u), 0.28 * Math.sin(v), ring * Math.sin(u)])
+          }
+        }
+        return out
+      }
+
+      function cursorAt(t) {
+        let [, x, y] = CURSOR[0]
+        for (let i = 1; i < CURSOR.length; i++) {
+          const k = ease.inOutCubic(span(t, CURSOR[i - 1][0], CURSOR[i][0]))
+          x = lerp(x, CURSOR[i][1], k)
+          y = lerp(y, CURSOR[i][2], k)
+        }
+        return [x, y]
+      }
+
+      function cursor(g, x, y, t) {
+        const press = 1 - 0.14 * Math.sin(Math.PI * span(t, CLICK - 0.06, CLICK + 0.1))
+        g.save()
+        g.translate(x, y)
+        g.scale(1.7 * press, 1.7 * press)
+        g.beginPath()
+        g.moveTo(0, 0)
+        g.lineTo(0, 30)
+        g.lineTo(7, 23.5)
+        g.lineTo(12, 35)
+        g.lineTo(17.5, 32.5)
+        g.lineTo(12.5, 21.5)
+        g.lineTo(22, 21.5)
+        g.closePath()
+        g.shadowColor = "rgba(0, 0, 0, 0.3)"
+        g.shadowBlur = 10
+        g.shadowOffsetY = 4
+        g.fillStyle = C.ink
+        g.fill()
+        g.shadowColor = "transparent"
+        g.strokeStyle = "#ffffff"
+        g.lineWidth = 1.6
+        g.lineJoin = "round"
+        g.stroke()
+        g.restore()
+      }
+    </script>
+  </body>
+</html>

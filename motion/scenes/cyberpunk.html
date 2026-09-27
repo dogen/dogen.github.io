@@ -1,0 +1,864 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>builder.xyz · cyberpunk</title>
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=Space+Mono:wght@400;700&display=block"
+    />
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #000;
+      }
+      canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas></canvas>
+    <script src="lib.js"></script>
+    <script>
+      // Night-city access node. A terminal logs in, the city boots up behind the
+      // wordmark, a reticle locks onto each door, then the feed glitches through
+      // the vault's keywords and the CRT powers off back to the prompt.
+      const { W, H, lerp, span, ease, rand, noise, layer, noiseTile, typed, decode } = M
+
+      const C = {
+        bg: "#05050a",
+        cyan: "#1fd6ff",
+        yellow: "#d7ff1e",
+        green: "#2bff66",
+        magenta: "#ff2e88",
+        ink: "#ece9e2",
+      }
+      const MONO = '"Space Mono", monospace'
+      const HUD = '"Chakra Petch", sans-serif'
+      const HORIZON = 700
+      const SKY_W = 2880
+
+      // [start, length, strength]
+      const GLITCHES = [
+        [2.32, 0.3, 1],
+        [3.95, 0.08, 0.35],
+        [4.9, 0.1, 0.5],
+        [5.62, 0.07, 0.3],
+        [6.16, 0.3, 1],
+        [8.72, 0.07, 0.3],
+        [10.46, 0.18, 0.85],
+        [11.7, 0.2, 0.9],
+      ]
+
+      const TERMINAL = [
+        { at: 1.2, text: "resolving node ........ marfa-tx  30.31N 104.02W" },
+        { at: 1.48, text: "handshake ed25519 ..... ok" },
+        { at: 1.7, text: "decrypting identity ... " },
+        { at: 2.12, text: "access granted" },
+      ]
+
+      const SIGNS = ["MEZCAL", "BAKKEN", "JUNG", "XR200", "OAXACA", "LINUX"]
+      const TICKER = [
+        "BAKKEN",
+        "DIVISION ORDERS",
+        "ROYALTY RECOVERY",
+        "GREEN RIVER",
+        "ENDEAVOUROS",
+        "RASPBERRY PI",
+        "TWO-STROKE",
+        "MEZCAL",
+        "PUER AETERNUS",
+        "RAMMED EARTH",
+        "SYSTEMS THINKING",
+      ]
+      const BURST = [
+        "BAKKEN",
+        "JUNG",
+        "MEZCAL",
+        "XR200",
+        "ENDEAVOUROS",
+        "RAMMED EARTH",
+        "RASPBERRY PI",
+      ]
+
+      const DOORS = [
+        {
+          x: 150,
+          at: 6.45,
+          color: C.cyan,
+          label: "01 // PROFESSIONAL",
+          title: "AUSTIN FAY",
+          lines: ["Division Order Analyst", "Oil & Gas · Financial Markets"],
+          readout: [
+            ["FOCUS", "ROYALTY RECOVERY"],
+            ["BASINS", "BAKKEN · GREEN RIVER"],
+            ["STATUS", "ONLINE"],
+          ],
+        },
+        {
+          x: 990,
+          at: 6.8,
+          color: C.yellow,
+          label: "02 // PERSONAL",
+          title: "THE WORKSHOP",
+          lines: ["Reading · Tinkering", "Mezcal · Two-strokes"],
+          readout: [
+            ["BENCH", "1983 XR200 TOP-END"],
+            ["READING", "KIERKEGAARD"],
+            ["POUR", "MEZCAL · THE GOOD STUFF"],
+          ],
+        },
+      ]
+      const PANEL = { y: 250, w: 780, h: 590, cut: 28 }
+
+      const [buf, b] = layer()
+      const [post, p] = layer()
+      const [tmp, q] = layer()
+      let far, near, grain, scanlines, dots, signs
+
+      M.scene({
+        duration: 13,
+        fps: 30,
+        crf: 24,
+        poster: 4.6,
+        fonts: [`700 40px ${MONO}`, `400 40px ${MONO}`, `700 40px ${HUD}`, `500 40px ${HUD}`],
+        setup() {
+          far = skyline(1, 140, 460, "#15142a", 0.35)
+          near = skyline(2, 110, 400, "#08080f", 0.9)
+          signs = placeSigns(near.blocks)
+          grain = noiseTile(256, 5)
+          scanlines = stripes()
+          dots = dotPattern()
+        },
+        draw(ctx, t, frame) {
+          b.save()
+          paint(b, t, frame)
+          b.restore()
+
+          p.fillStyle = "#000"
+          p.fillRect(0, 0, W, H)
+          const g = glitch(t)
+          chroma(p, buf, 2 + g * 18)
+          if (g > 0) tear(p, g, frame)
+          finish(p, frame)
+
+          powerOff(ctx, t)
+        },
+      })
+
+      // ---------- composition ----------
+
+      function paint(g, t, frame) {
+        g.fillStyle = C.bg
+        g.fillRect(0, 0, W, H)
+        // The loop ends on the same bare prompt it starts on.
+        if (t >= 12.7) return terminal(g, 0)
+        if (t >= 12.55) return
+        if (t < 2.45) return terminal(g, t)
+
+        world(g, t, frame)
+        if (t < 6.3) wordmark(g, t, frame)
+        else if (t < 10.58) doors(g, t, frame)
+        else outro(g, t, frame)
+        hud(g, t)
+      }
+
+      function terminal(g, t) {
+        const x = 250
+        let y = 410
+        g.font = `400 36px ${MONO}`
+        glow(g, C.green, 10)
+        g.fillStyle = C.green
+
+        const cmd = "> " + typed("ssh dogen@builder.xyz", t, 0.25, 26)
+        g.fillText(cmd, x, y)
+        let cursorX = x + g.measureText(cmd).width
+
+        g.fillStyle = "rgba(43, 255, 102, 0.72)"
+        for (const line of TERMINAL) {
+          if (t < line.at) break
+          y += 58
+          const shown = "  " + typed(line.text, t, line.at, 110)
+          g.fillText(shown, x, y)
+          cursorX = x + g.measureText(shown).width
+          if (line.text.startsWith("decrypting")) {
+            const k = span(t, 1.92, 2.1)
+            const bar = "█".repeat(Math.round(k * 10)).padEnd(10, "░")
+            const tail = `${bar} ${String(Math.round(k * 100)).padStart(3)}%`
+            g.fillText(tail, cursorX, y)
+            cursorX += g.measureText(tail).width
+          }
+        }
+
+        const blink = t < 0.6 || Math.floor(t * 3) % 2 === 0
+        if (blink) {
+          g.fillStyle = C.green
+          g.fillRect(cursorX + 6, y - 30, 19, 38)
+        }
+      }
+
+      function world(g, t, frame) {
+        g.save()
+        const zoom = 1 + 0.07 * span(t, 2.45, 12)
+        g.translate(W / 2, HORIZON)
+        g.scale(zoom, zoom)
+        g.translate(-W / 2, -HORIZON)
+
+        const sky = g.createLinearGradient(0, 0, 0, HORIZON)
+        sky.addColorStop(0, "#030308")
+        sky.addColorStop(0.55, "#0c0920")
+        sky.addColorStop(1, "#2b0f37")
+        g.fillStyle = sky
+        g.fillRect(-100, -100, W + 200, HORIZON + 100)
+        haze(g, W / 2, HORIZON, 1000, C.magenta, 0.28)
+        haze(g, 320, 560, 700, C.cyan, 0.12)
+
+        searchlights(g, t)
+        scroll(g, far.canvas, t * 14)
+        scroll(g, near.canvas, t * 34)
+        neonSigns(g, t, frame)
+        floor(g, t)
+        rain(g, t)
+        g.restore()
+      }
+
+      function wordmark(g, t, frame) {
+        dim(g, 0.35)
+        // a dark band so signage scrolling behind never fights the wordmark
+        const band = g.createLinearGradient(0, 330, 0, 720)
+        band.addColorStop(0, "rgba(5, 5, 10, 0)")
+        band.addColorStop(0.5, "rgba(5, 5, 10, 0.9)")
+        band.addColorStop(1, "rgba(5, 5, 10, 0)")
+        g.fillStyle = band
+        g.fillRect(0, 330, W, 390)
+        g.textAlign = "center"
+
+        g.font = `400 22px ${MONO}`
+        g.fillStyle = C.green
+        glow(g, C.green, 8)
+        g.fillText(typed("IDENTITY VERIFIED — AUSTIN FAY", t, 2.9, 40), W / 2, 392)
+
+        g.font = `700 150px ${MONO}`
+        const word = decode("dogen.builder.xyz", span(t, 2.6, 3.6), frame, 1)
+        const jitter = 3 + 6 * Math.max(0, noise(t * 9, 4))
+        neonText(g, word, W / 2, 540, C.cyan, jitter)
+
+        g.font = `500 32px ${HUD}`
+        g.letterSpacing = "10px"
+        g.fillStyle = C.yellow
+        glow(g, C.yellow, 12)
+        g.fillText(typed("ACCESS NODE // SELECT A DOOR", t, 3.45, 30), W / 2 + 5, 630)
+        g.letterSpacing = "0px"
+
+        // measured rule under the subtitle
+        const k = ease.outExpo(span(t, 3.3, 4.2))
+        g.shadowBlur = 0
+        g.fillStyle = "rgba(31, 214, 255, 0.5)"
+        g.fillRect(W / 2 - 520 * k, 676, 1040 * k, 2)
+        for (let i = 0; i <= 26; i++) {
+          const x = W / 2 - 520 + i * 40
+          if (Math.abs(x - W / 2) <= 520 * k) g.fillRect(x, 670, 2, i % 5 === 0 ? 14 : 8)
+        }
+      }
+
+      function doors(g, t, frame) {
+        dim(g, 0.5)
+        for (const d of DOORS) door(g, d, t, frame)
+
+        // A reticle hunts across and locks onto each door in turn.
+        const targets = [
+          [W / 2, 560, 7.2],
+          [DOORS[0].x + 260, PANEL.y + 170, 7.7],
+          [DOORS[0].x + 260, PANEL.y + 170, 8.9],
+          [DOORS[1].x + 300, PANEL.y + 170, 9.35],
+          [DOORS[1].x + 300, PANEL.y + 170, 10.5],
+        ]
+        if (t < targets[0][2]) return
+        let [x, y] = targets[0]
+        for (let i = 1; i < targets.length; i++) {
+          const k = ease.inOutExpo(span(t, targets[i - 1][2], targets[i][2]))
+          x = lerp(x, targets[i][0], k)
+          y = lerp(y, targets[i][1], k)
+        }
+        const onPro = t > 7.6 && t < 8.95
+        const onPersonal = t > 9.3
+        const color = onPersonal ? C.yellow : C.cyan
+        const r = onPro || onPersonal ? 60 : 92
+        reticle(g, x, y, r, t, color)
+        if (onPro || onPersonal) {
+          const d = DOORS[onPro ? 0 : 1]
+          g.font = `700 22px ${HUD}`
+          g.letterSpacing = "6px"
+          g.fillStyle = color
+          g.textAlign = "right"
+          if (Math.floor(t * 4) % 2 === 0) g.fillText("◉ LOCKED", d.x + PANEL.w - 44, PANEL.y + 86)
+          g.letterSpacing = "0px"
+        }
+      }
+
+      function door(g, d, t, frame) {
+        const { y, w, h, cut } = PANEL
+        const x = d.x
+        const k = ease.outCubic(span(t, d.at, d.at + 0.6))
+        if (!k) return
+
+        g.save()
+        chamfer(g, x, y, w, h, cut)
+        g.globalAlpha = k * 0.94
+        g.fillStyle = "#05050b"
+        g.fill()
+        g.globalAlpha = k
+        g.save()
+        g.clip()
+        g.fillStyle = dots
+        g.fillRect(x, y, w, h)
+        // scan bar
+        const sy = y + (((t - d.at) * 0.42) % 1) * h
+        const band = g.createLinearGradient(0, sy - 60, 0, sy)
+        band.addColorStop(0, "rgba(0,0,0,0)")
+        band.addColorStop(1, withAlpha(d.color, 0.16))
+        g.fillStyle = band
+        g.fillRect(x, sy - 60, w, 60)
+        g.restore()
+
+        const len = 2 * (w + h) - 2 * cut * (2 - Math.SQRT2)
+        g.setLineDash([len * k, len])
+        g.lineWidth = 2
+        g.strokeStyle = d.color
+        glow(g, d.color, 14)
+        g.stroke()
+        g.setLineDash([])
+
+        const lx = x + 56
+        g.textAlign = "left"
+        g.font = `500 24px ${HUD}`
+        g.letterSpacing = "6px"
+        g.fillStyle = d.color
+        g.fillText(typed(d.label, t, d.at + 0.2, 40), lx, y + 86)
+        g.letterSpacing = "0px"
+
+        const size = fit(g, d.title, `700`, HUD, 104, w - 112)
+        g.font = `700 ${size}px ${HUD}`
+        neonText(
+          g,
+          decode(d.title, span(t, d.at + 0.35, d.at + 1.1), frame, 2),
+          lx,
+          y + 200,
+          d.color,
+          2.5,
+          "left",
+        )
+
+        g.font = `400 24px ${MONO}`
+        g.fillStyle = "rgba(236, 233, 226, 0.85)"
+        glow(g, d.color, 0)
+        d.lines.forEach((line, i) =>
+          g.fillText(typed(line, t, d.at + 0.8 + i * 0.35, 48), lx, y + 262 + i * 38),
+        )
+
+        g.fillStyle = withAlpha(d.color, 0.45)
+        for (let i = 0; i < (w - 112) / 14; i++) g.fillRect(lx + i * 14, y + 350, 8, 2)
+
+        g.font = `400 19px ${MONO}`
+        d.readout.forEach(([key, value], i) => {
+          const at = d.at + 1.3 + i * 0.22
+          const ry = y + 402 + i * 42
+          g.fillStyle = withAlpha(d.color, 0.75)
+          g.fillText(typed(key, t, at, 40), lx, ry)
+          g.fillStyle = C.ink
+          g.fillText(typed(value, t, at + 0.1, 50), lx + 170, ry)
+          if (value === "ONLINE" && t > at + 0.3 && Math.floor(t * 2.5) % 2 === 0) {
+            g.fillStyle = C.green
+            glow(g, C.green, 10)
+            g.beginPath()
+            g.arc(lx + 170 + g.measureText(value).width + 20, ry - 7, 6, 0, Math.PI * 2)
+            g.fill()
+            glow(g, C.green, 0)
+          }
+        })
+
+        const enter = span(t, d.at + 1.6, d.at + 2)
+        if (enter) {
+          g.globalAlpha = k * enter
+          g.font = `700 26px ${HUD}`
+          g.letterSpacing = "6px"
+          g.fillStyle = d.color
+          glow(g, d.color, 12)
+          g.fillText("→ ENTER", lx + 8 * (1 + Math.sin(t * 5)), y + h - 50)
+          g.letterSpacing = "0px"
+        }
+        g.restore()
+      }
+
+      function outro(g, t, frame) {
+        dim(g, 0.62)
+        g.textAlign = "center"
+        if (t < 11.72) {
+          const i = Math.min(BURST.length - 1, Math.floor((t - 10.58) / 0.163))
+          const local = (t - 10.58 - i * 0.163) / 0.163
+          const color = [C.cyan, C.yellow, C.magenta, C.green][i % 4]
+          g.font = `700 170px ${HUD}`
+          neonText(g, decode(BURST[i], span(local, 0, 0.55), frame, 9 + i), W / 2, 600, color, 4)
+          return
+        }
+        g.font = `700 96px ${MONO}`
+        neonText(g, "dogen.builder.xyz", W / 2, 540, C.cyan, 3)
+        g.font = `400 26px ${MONO}`
+        g.fillStyle = C.green
+        glow(g, C.green, 10)
+        g.fillText(typed("// connection closed", t, 11.8, 60), W / 2, 616)
+      }
+
+      function hud(g, t) {
+        const a = span(t, 2.5, 2.9) * (1 - span(t, 12.2, 12.4))
+        if (!a) return
+        g.save()
+        g.globalAlpha = a
+        g.textAlign = "left"
+        g.strokeStyle = C.cyan
+        g.lineWidth = 2
+        glow(g, C.cyan, 8)
+        const m = 48
+        const L = 70
+        for (const [x, y, sx, sy] of [
+          [m, m, 1, 1],
+          [W - m, m, -1, 1],
+          [m, H - m, 1, -1],
+          [W - m, H - m, -1, -1],
+        ]) {
+          g.beginPath()
+          g.moveTo(x, y + sy * L)
+          g.lineTo(x, y)
+          g.lineTo(x + sx * L, y)
+          g.stroke()
+        }
+
+        g.font = `500 20px ${HUD}`
+        g.letterSpacing = "4px"
+        g.fillStyle = C.cyan
+        g.fillText("NODE // MARFA-TX", 92, 104)
+        g.fillStyle = "rgba(236, 233, 226, 0.55)"
+        glow(g, C.cyan, 0)
+        g.fillText("30.31°N  104.02°W", 92, 134)
+
+        g.textAlign = "right"
+        const tc = timecode(t)
+        g.fillStyle = C.ink
+        g.fillText(tc, W - 92, 104)
+        if (Math.floor(t * 2) % 2 === 0) {
+          g.fillStyle = C.magenta
+          glow(g, C.magenta, 10)
+          g.beginPath()
+          g.arc(W - 92 - g.measureText(tc).width - 26, 97, 7, 0, Math.PI * 2)
+          g.fill()
+          glow(g, C.magenta, 0)
+        }
+        g.fillStyle = "rgba(236, 233, 226, 0.55)"
+        g.fillText("SIGNAL", W - 92 - 5 * 12 - 16, 134)
+        for (let i = 0; i < 5; i++) {
+          const on = noise(t * 3, 20 + i) > -0.3 + i * 0.22
+          g.fillStyle = on ? C.cyan : "rgba(31, 214, 255, 0.2)"
+          g.fillRect(W - 92 - (5 - i) * 12 + 4, 134 - 6 - i * 4, 7, 6 + i * 4)
+        }
+
+        // keyword ticker
+        g.textAlign = "left"
+        g.letterSpacing = "0px"
+        g.font = `400 18px ${MONO}`
+        const text = TICKER.join("  //  ") + "  //  "
+        const tw = g.measureText(text).width
+        g.save()
+        g.beginPath()
+        g.rect(92, H - 124, 980, 40)
+        g.clip()
+        g.fillStyle = "rgba(236, 233, 226, 0.62)"
+        const ox = -((t * 90) % tw)
+        g.fillText(text, 92 + ox, H - 96)
+        g.fillText(text, 92 + ox + tw, H - 96)
+        g.restore()
+        g.fillStyle = C.magenta
+        g.fillRect(92, H - 84, 980 * ((t % 6.5) / 6.5), 2)
+        g.restore()
+      }
+
+      // ---------- city ----------
+
+      function skyline(seed, minH, maxH, fill, windowAlpha) {
+        const [canvas, g] = layer(SKY_W, HORIZON + 4)
+        const blocks = []
+        for (let x = 0, i = 0; x < SKY_W; i++) {
+          let w = 70 + rand(i, seed, 1) * 150
+          if (x + w > SKY_W - 40) w = SKY_W - x
+          const h = minH + rand(i, seed, 2) ** 1.4 * (maxH - minH)
+          blocks.push({ x, w, h })
+          g.fillStyle = fill
+          g.fillRect(x, HORIZON - h, w - 3, h + 4)
+          g.fillStyle = withAlpha(rand(i, seed, 4) < 0.5 ? C.magenta : C.cyan, 0.35)
+          g.fillRect(x, HORIZON - h, w - 3, 1.5)
+          for (let wy = HORIZON - h + 14; wy < HORIZON - 10; wy += 17) {
+            for (let wx = x + 10; wx < x + w - 14; wx += 13) {
+              const r = rand(wx, wy, seed)
+              if (r > 0.2) continue
+              const warm = rand(wy, wx, seed + 9) < 0.55
+              g.fillStyle = warm
+                ? `rgba(255, 196, 120, ${windowAlpha * (0.4 + r * 3)})`
+                : `rgba(150, 232, 255, ${windowAlpha * (0.3 + r * 3)})`
+              g.fillRect(wx, wy, 5, 8)
+            }
+          }
+          x += w
+        }
+        return { canvas, blocks }
+      }
+
+      function placeSigns(blocks) {
+        const out = []
+        let last = -400
+        for (const bl of blocks) {
+          const word = SIGNS[out.length % SIGNS.length]
+          const need = word.length * 46 + 70
+          if (bl.h > need + 30 && bl.w > 110 && bl.x - last > 380) {
+            out.push({
+              x: bl.x + 24,
+              top: HORIZON - bl.h + 30,
+              word,
+              color: [C.magenta, C.cyan, C.yellow][out.length % 3],
+            })
+            last = bl.x
+          }
+        }
+        return out
+      }
+
+      function scroll(g, canvas, offset) {
+        const ox = -(offset % SKY_W)
+        g.drawImage(canvas, ox, 0)
+        g.drawImage(canvas, ox + SKY_W, 0)
+      }
+
+      function neonSigns(g, t, frame) {
+        const ox = -((t * 34) % SKY_W)
+        g.save()
+        g.font = `700 38px ${HUD}`
+        g.textAlign = "center"
+        signs.forEach((s, i) => {
+          for (const base of [ox, ox + SKY_W]) {
+            const x = base + s.x
+            if (x < -80 || x > W + 80) continue
+            const flicker = rand(frame >> 1, i, 31) < 0.07 ? 0.25 : 1
+            const hgt = s.word.length * 46 + 30
+            g.globalAlpha = flicker
+            g.fillStyle = "#07060c"
+            g.fillRect(x, s.top, 60, hgt)
+            g.strokeStyle = s.color
+            g.lineWidth = 2
+            glow(g, s.color, 18)
+            g.strokeRect(x, s.top, 60, hgt)
+            g.fillStyle = s.color
+            ;[...s.word].forEach((ch, j) => g.fillText(ch, x + 30, s.top + 50 + j * 46))
+          }
+        })
+        g.restore()
+      }
+
+      function searchlights(g, t) {
+        g.save()
+        g.globalCompositeOperation = "lighter"
+        for (const [bx, phase] of [
+          [520, 0],
+          [1460, 2.1],
+        ]) {
+          const a = -Math.PI / 2 + 0.38 * Math.sin(t * 0.55 + phase)
+          const len = 1300
+          const grd = g.createLinearGradient(
+            bx,
+            HORIZON,
+            bx + Math.cos(a) * len,
+            HORIZON + Math.sin(a) * len,
+          )
+          grd.addColorStop(0, "rgba(160, 220, 255, 0.16)")
+          grd.addColorStop(1, "rgba(160, 220, 255, 0)")
+          g.fillStyle = grd
+          g.beginPath()
+          g.moveTo(bx, HORIZON)
+          g.lineTo(bx + Math.cos(a - 0.045) * len, HORIZON + Math.sin(a - 0.045) * len)
+          g.lineTo(bx + Math.cos(a + 0.045) * len, HORIZON + Math.sin(a + 0.045) * len)
+          g.fill()
+        }
+        g.restore()
+      }
+
+      function floor(g, t) {
+        g.save()
+        g.beginPath()
+        g.rect(-100, HORIZON, W + 200, H - HORIZON + 100)
+        g.clip()
+        const base = g.createLinearGradient(0, HORIZON, 0, H)
+        base.addColorStop(0, "#1c0822")
+        base.addColorStop(1, "#040408")
+        g.fillStyle = base
+        g.fillRect(-100, HORIZON, W + 200, H - HORIZON + 100)
+
+        g.strokeStyle = C.magenta
+        g.lineWidth = 2
+        glow(g, C.magenta, 10)
+        g.globalAlpha = 0.5
+        const phase = (t * 1.5) % 1
+        for (let k = 0; k < 44; k++) {
+          const z = (k + 1 - phase) * 0.55
+          if (z < 1) continue
+          const y = HORIZON + (H - HORIZON) / z
+          g.beginPath()
+          g.moveTo(-100, y)
+          g.lineTo(W + 100, y)
+          g.stroke()
+        }
+        for (let i = -26; i <= 26; i++) {
+          g.beginPath()
+          g.moveTo(W / 2 + i * 28, HORIZON)
+          g.lineTo(W / 2 + i * 250, H + 60)
+          g.stroke()
+        }
+        g.globalAlpha = 1
+        glow(g, C.magenta, 0)
+        const fade = g.createLinearGradient(0, HORIZON, 0, HORIZON + 170)
+        fade.addColorStop(0, "rgba(28, 8, 34, 1)")
+        fade.addColorStop(1, "rgba(28, 8, 34, 0)")
+        g.fillStyle = fade
+        g.fillRect(-100, HORIZON, W + 200, 170)
+        g.restore()
+      }
+
+      function rain(g, t) {
+        g.save()
+        g.globalCompositeOperation = "lighter"
+        g.strokeStyle = "rgba(170, 215, 255, 0.22)"
+        g.lineWidth = 1.5
+        g.beginPath()
+        for (let i = 0; i < 280; i++) {
+          const speed = 1500 + rand(i, 1, 40) * 900
+          const len = 18 + rand(i, 2, 40) * 42
+          const y = ((rand(i, 3, 40) * (H + 200) + t * speed) % (H + 200)) - 100
+          const x = rand(i, 4, 40) * (W + 300) - 150 + y * 0.16
+          g.moveTo(x, y)
+          g.lineTo(x + len * 0.16, y + len)
+        }
+        g.stroke()
+        g.restore()
+      }
+
+      // ---------- post ----------
+
+      function glitch(t) {
+        let g = 0
+        for (const [at, len, strength] of GLITCHES) {
+          if (t >= at && t < at + len)
+            g = Math.max(g, strength * Math.sin((Math.PI * (t - at)) / len))
+        }
+        return g
+      }
+
+      /** True RGB split: each channel of src drawn with its own horizontal offset. */
+      function chroma(dst, src, dx) {
+        dst.globalCompositeOperation = "lighter"
+        for (const [color, ox] of [
+          ["#ff0000", -dx],
+          ["#00ff00", 0],
+          ["#0000ff", dx],
+        ]) {
+          q.globalCompositeOperation = "copy"
+          q.drawImage(src, 0, 0)
+          q.globalCompositeOperation = "multiply"
+          q.fillStyle = color
+          q.fillRect(0, 0, W, H)
+          dst.drawImage(tmp, ox, 0)
+        }
+        dst.globalCompositeOperation = "source-over"
+      }
+
+      /** Horizontal tearing: bands of the frame shoved sideways, some tinted. */
+      function tear(g, amount, frame) {
+        q.globalCompositeOperation = "copy"
+        q.drawImage(post, 0, 0)
+        for (let i = 0; i < 6 + amount * 12; i++) {
+          const y = rand(frame, i, 1) * H
+          const h = 6 + rand(frame, i, 2) * 90 * amount
+          const dx = (rand(frame, i, 3) - 0.5) * 300 * amount
+          g.drawImage(tmp, 0, y, W, h, dx, y, W, h)
+          if (rand(frame, i, 4) < 0.3) {
+            g.globalCompositeOperation = "lighter"
+            g.fillStyle = withAlpha(rand(frame, i, 5) < 0.5 ? C.magenta : C.cyan, 0.18)
+            g.fillRect(0, y, W, h)
+            g.globalCompositeOperation = "source-over"
+          }
+        }
+      }
+
+      function finish(g, frame) {
+        g.globalAlpha = 0.16
+        g.drawImage(scanlines, 0, 0)
+        g.globalAlpha = 0.045
+        g.globalCompositeOperation = "overlay"
+        const ox = rand(frame, 1, 11) * 256
+        const oy = rand(frame, 2, 11) * 256
+        for (let x = -ox; x < W; x += 256)
+          for (let y = -oy; y < H; y += 256) g.drawImage(grain, x, y)
+        g.globalCompositeOperation = "source-over"
+        g.globalAlpha = 1
+        const v = g.createRadialGradient(W / 2, H / 2, H * 0.35, W / 2, H / 2, H * 1.05)
+        v.addColorStop(0, "rgba(0,0,0,0)")
+        v.addColorStop(1, "rgba(0,0,0,0.6)")
+        g.fillStyle = v
+        g.fillRect(0, 0, W, H)
+      }
+
+      /** CRT switch-off: squash to a line, then to a dot, then dark. */
+      function powerOff(ctx, t) {
+        ctx.fillStyle = "#000"
+        ctx.fillRect(0, 0, W, H)
+        if (t < 11.95 || t >= 12.7) return ctx.drawImage(post, 0, 0)
+        const squash = ease.inCubic(span(t, 11.95, 12.3))
+        const shrink = ease.inCubic(span(t, 12.28, 12.52))
+        if (shrink < 1) {
+          const h = Math.max(3, H * (1 - squash))
+          const w = W * (1 - shrink)
+          ctx.drawImage(post, (W - w) / 2, (H - h) / 2, w, h)
+          ctx.globalCompositeOperation = "lighter"
+          ctx.fillStyle = `rgba(210, 245, 255, ${0.9 * squash})`
+          ctx.fillRect((W - w) / 2, (H - h) / 2, w, h)
+          ctx.globalCompositeOperation = "source-over"
+        }
+        const dot = span(t, 12.3, 12.52) * (1 - span(t, 12.52, 12.7))
+        if (dot) {
+          const r = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, 60)
+          r.addColorStop(0, `rgba(230, 250, 255, ${dot})`)
+          r.addColorStop(1, "rgba(31, 214, 255, 0)")
+          ctx.fillStyle = r
+          ctx.fillRect(W / 2 - 60, H / 2 - 60, 120, 120)
+        }
+      }
+
+      // ---------- helpers ----------
+
+      function neonText(g, str, x, y, color, split, align = "center") {
+        g.save()
+        g.textAlign = align
+        g.globalCompositeOperation = "lighter"
+        g.shadowBlur = 0
+        g.globalAlpha = 0.7
+        g.fillStyle = C.magenta
+        g.fillText(str, x - split, y)
+        g.fillStyle = color
+        g.fillText(str, x + split, y)
+        g.globalCompositeOperation = "source-over"
+        g.globalAlpha = 1
+        glow(g, color, 28)
+        g.fillStyle = mix(color)
+        g.fillText(str, x, y)
+        g.restore()
+      }
+
+      function reticle(g, x, y, r, t, color) {
+        g.save()
+        g.translate(x, y)
+        g.strokeStyle = color
+        g.lineWidth = 2
+        glow(g, color, 10)
+        g.rotate(t * 1.4)
+        for (let i = 0; i < 4; i++) {
+          g.beginPath()
+          g.arc(0, 0, r, (i * Math.PI) / 2 + 0.22, ((i + 1) * Math.PI) / 2 - 0.22)
+          g.stroke()
+        }
+        g.rotate(-t * 1.4)
+        for (const [dx, dy] of [
+          [1, 0],
+          [-1, 0],
+          [0, 1],
+          [0, -1],
+        ]) {
+          g.beginPath()
+          g.moveTo(dx * (r + 10), dy * (r + 10))
+          g.lineTo(dx * (r + 30), dy * (r + 30))
+          g.stroke()
+        }
+        g.fillStyle = color
+        g.fillRect(-3, -3, 6, 6)
+        g.restore()
+      }
+
+      function chamfer(g, x, y, w, h, c) {
+        g.beginPath()
+        g.moveTo(x + c, y)
+        g.lineTo(x + w, y)
+        g.lineTo(x + w, y + h - c)
+        g.lineTo(x + w - c, y + h)
+        g.lineTo(x, y + h)
+        g.lineTo(x, y + c)
+        g.closePath()
+      }
+
+      function fit(g, str, weight, family, max, width) {
+        g.font = `${weight} ${max}px ${family}`
+        const w = g.measureText(str).width
+        return w > width ? Math.floor((max * width) / w) : max
+      }
+
+      function dim(g, a) {
+        g.fillStyle = `rgba(5, 5, 10, ${a})`
+        g.fillRect(0, 0, W, H)
+      }
+
+      function haze(g, x, y, r, color, a) {
+        const grd = g.createRadialGradient(x, y, 0, x, y, r)
+        grd.addColorStop(0, withAlpha(color, a))
+        grd.addColorStop(1, withAlpha(color, 0))
+        g.fillStyle = grd
+        g.fillRect(x - r, y - r, r * 2, r * 2)
+      }
+
+      function glow(g, color, blur) {
+        g.shadowColor = color
+        g.shadowBlur = blur
+      }
+
+      function withAlpha(hex, a) {
+        const n = parseInt(hex.slice(1), 16)
+        return `rgba(${n >> 16}, ${(n >> 8) & 255}, ${n & 255}, ${a})`
+      }
+
+      /** The neon's hot white core: the colour pushed most of the way to white. */
+      function mix(hex) {
+        const n = parseInt(hex.slice(1), 16)
+        const c = [n >> 16, (n >> 8) & 255, n & 255].map((v) => Math.round(v + (255 - v) * 0.72))
+        return `rgb(${c.join(", ")})`
+      }
+
+      function timecode(t) {
+        const f = Math.floor((t % 1) * 30)
+        const s = Math.floor(t)
+        return `00:00:${String(s).padStart(2, "0")}:${String(f).padStart(2, "0")}`
+      }
+
+      function stripes() {
+        const [canvas, g] = layer()
+        g.fillStyle = "#000"
+        for (let y = 0; y < H; y += 3) g.fillRect(0, y, W, 1)
+        return canvas
+      }
+
+      function dotPattern() {
+        const [canvas, g] = layer(24, 24)
+        g.fillStyle = "rgba(255, 255, 255, 0.07)"
+        g.fillRect(11, 11, 2, 2)
+        return b.createPattern(canvas, "repeat")
+      }
+    </script>
+  </body>
+</html>
