@@ -153,12 +153,13 @@
       let returnTo = null;
 
       // 4K only where 1080p would be visibly stretched (big or high-density screens), and only
-      // when the device says it decodes 4K smoothly and the connection isn't slow or saving data.
+      // when the device says it decodes 4K smoothly and the connection isn't saving data or 2g/3g.
+      // (Not navigator.connection.downlink: on a fresh visit it's a ~1.5 Mbps placeholder.)
       async function rendition() {
         const cover = matchMedia('(min-aspect-ratio: 8/5) and (max-aspect-ratio: 2/1)').matches;
         const fill = cover ? Math.max(innerWidth, innerHeight * 16 / 9) : Math.min(innerWidth, innerHeight * 16 / 9);
         const net = navigator.connection || {};
-        if (fill * (window.devicePixelRatio || 1) < 2200 || net.saveData || (net.downlink && net.downlink < 8)) {
+        if (fill * (window.devicePixelRatio || 1) < 2200 || net.saveData || /2g|3g/.test(net.effectiveType || '')) {
           return 'hypermodern-intro.mp4';
         }
         const type = 'video/mp4; codecs="avc1.640034"';
@@ -215,6 +216,11 @@
         if (open && !document.hidden && video.paused) video.play().catch(finish);
       });
 
+      // A film that stalls mid-play is worse than none: give it 2.5s to recover, then the doors.
+      video.addEventListener('waiting', () => {
+        clearTimeout(stall);
+        stall = setTimeout(finish, 2500);
+      });
       video.addEventListener('playing', () => clearTimeout(stall));
       video.addEventListener('timeupdate', () => {
         if (video.currentTime >= INK_AT) intro.classList.add('is-ink');
