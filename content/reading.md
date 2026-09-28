@@ -4,8 +4,6 @@ description: "Books, articles, papers I'm reading"
 tags: ["reading", "books"]
 ---
 
-# Reading
-
 ## Currently Reading
 
 - [The Sickness Unto Death](https://www.goodreads.com/book/show/24972.The_Sickness_Unto_Death) by Søren Kierkegaard

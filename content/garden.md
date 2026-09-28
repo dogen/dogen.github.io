@@ -3,8 +3,6 @@ title: "The Workshop"
 description: "Personal notes, reading, tinkering, and things I find interesting"
 ---
 
-# The Workshop
-
 ![[rammed-earth.png|On the rammed-earth build, Marfa]]
 
 **A place for what I'm thinking about, reading, and tinkering on.**

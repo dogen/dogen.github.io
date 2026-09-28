@@ -4,8 +4,6 @@ description: "Raspberry pi experiments, coding projects, tinkering"
 tags: ["projects", "raspberry-pi", "coding"]
 ---
 
-# Projects
-
 Things I'm building or have built.
 
 ## Active
