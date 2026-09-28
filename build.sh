@@ -10,6 +10,10 @@ echo "🦨 Building builder.xyz..."
 echo "  → Running Quartz build..."
 npx quartz build
 
+# Step 1b: Graph view fixes Quartz's graph plugin doesn't offer (see the script)
+echo "  → Patching the graph view..."
+node scripts/patch-graph.mjs public
+
 # Step 2: Copy static pages to public/
 echo "  → Copying static landing and pro section..."
 cp static-pages/index.html public/

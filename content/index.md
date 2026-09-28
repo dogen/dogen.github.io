@@ -1,5 +1,6 @@
 ---
 title: "builder.xyz"
+unlisted: true
 ---
 
 <!-- This page gets overwritten by static landing page during build.

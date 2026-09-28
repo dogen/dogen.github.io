@@ -111,6 +111,17 @@ plugins:
       priority: 50
   - source: github:quartz-community/graph
     enabled: true
+    # opacityScale 4.75 puts labels at full opacity at 1x zoom (they fade as you zoom out);
+    # scripts/patch-graph.mjs makes the plugin apply it before anyone zooms.
+    options:
+      localGraph:
+        fontSize: 0.7
+        opacityScale: 4.75
+      globalGraph:
+        fontSize: 0.72
+        opacityScale: 4.75
+        repelForce: 0.9
+        linkDistance: 42
     layout:
       position: right
       priority: 10
