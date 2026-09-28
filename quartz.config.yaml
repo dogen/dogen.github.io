@@ -1,12 +1,12 @@
 configuration:
   pageTitle: "builder"
-  pageTitleSuffix: " — builder.xyz"
+  pageTitleSuffix: " — dogen.github.io"
   enableSPA: true
   enablePopovers: true
   analytics:
     provider: "none"
   locale: en-US
-  baseUrl: "dogen.github.io/builder.xyz"
+  baseUrl: "dogen.github.io"
   ignorePatterns:
     - private
     - templates
